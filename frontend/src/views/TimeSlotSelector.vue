@@ -1,12 +1,12 @@
 <template>
-  <div class="space-y-3">
+  <div class="space-y-4">
     <!-- Time Period Selection -->
     <div class="grid grid-cols-4 gap-2">
       <button
         v-for="period in timePeriods"
         :key="period.name"
         @click="selectTimePeriod(period.name)"
-        class="py-2 px-3 rounded-lg font-medium text-sm touch-target transition-all duration-200"
+        class="py-3 px-4 rounded-xl font-medium text-sm touch-target transition-all duration-200"
         :class="selectedTimePeriod === period.name
           ? 'bg-primary text-white shadow-lg'
           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
@@ -16,7 +16,7 @@
     </div>
 
     <!-- Time Slots Grid -->
-    <div class="space-y-1">
+    <div class="space-y-2">
       <div class="flex items-center justify-between">
         <h4 class="text-sm font-medium text-gray-700">Select meditation time</h4>
         <div v-if="selectedDuration > 0" class="text-sm text-primary font-medium">
@@ -36,7 +36,7 @@
 
       <!-- Time slots -->
       <div 
-        class="grid grid-cols-6 gap-1 p-3 bg-gray-50 rounded-lg select-none"
+        class="grid grid-cols-6 gap-1 p-4 bg-gray-50 rounded-xl select-none"
         @touchstart="handleTouchStart"
         @touchmove="handleTouchMove" 
         @touchend="handleTouchEnd"
@@ -49,24 +49,23 @@
           v-for="slot in filteredTimeSlots"
           :key="slot"
           :data-time-slot="slot"
-          class="time-slot aspect-square flex flex-col items-center justify-center text-xs rounded-lg cursor-pointer transition-all duration-150 touch-target font-medium"
+          class="time-slot aspect-square flex items-center justify-center text-xs rounded-lg cursor-pointer transition-all duration-150 touch-target font-medium"
           :class="getSlotClasses(slot)"
         >
-          <div class="font-semibold">{{ getTimeOnly(slot) }}</div>
-          <div class="text-xs opacity-80">{{ getAmPm(slot) }}</div>
+          {{ formatTimeSlot(slot) }}
         </div>
       </div>
     </div>
 
     <!-- Quick duration buttons -->
-    <div class="space-y-1">
+    <div class="space-y-2">
       <h4 class="text-sm font-medium text-gray-700">Quick select duration</h4>
       <div class="grid grid-cols-4 gap-2">
         <button
           v-for="duration in [30, 60, 90, 120]"
           :key="duration"
           @click="quickSelectDuration(duration)"
-          class="py-1 px-3 rounded-lg text-sm font-medium touch-target transition-colors"
+          class="py-2 px-4 rounded-lg text-sm font-medium touch-target transition-colors"
           :class="selectedDuration === duration
             ? 'bg-primary text-white'
             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
@@ -81,16 +80,8 @@
       <div class="flex items-center justify-between">
         <div>
           <div class="font-medium text-green-800">Selected Time</div>
-          <div class="text-sm text-green-700 flex items-center space-x-2">
-            <div class="text-center">
-              <div class="font-semibold">{{ getTimeOnly(selectedTimeRange.start) }}</div>
-              <div class="text-xs">{{ getAmPm(selectedTimeRange.start) }}</div>
-            </div>
-            <span class="mx-2">-</span>
-            <div class="text-center">
-              <div class="font-semibold">{{ getTimeOnly(selectedTimeRange.end) }}</div>
-              <div class="text-xs">{{ getAmPm(selectedTimeRange.end) }}</div>
-            </div>
+          <div class="text-sm text-green-700">
+            {{ formatTime(selectedTimeRange.start) }} - {{ formatTime(selectedTimeRange.end) }}
           </div>
         </div>
         <div class="text-right">
@@ -140,7 +131,7 @@ const selectedDuration = computed(() => {
 })
 
 // Methods
-const selectTimePeriod = (period: 'All' | 'Morning' | 'Afternoon' | 'Evening') => {
+const selectTimePeriod = (period:  '*.vue' | 'Afternoon' | 'Evening' | 'All' ) => {
   sessionsStore.setTimePeriod(period)
   // Clear selection when changing period
   emit('update:modelValue', { start: null, end: null })
@@ -152,16 +143,6 @@ const formatTime = (time: string): string => {
 
 const formatTimeSlot = (slot: string): string => {
   return sessionsStore.formatTime(slot).replace(' ', '')
-}
-
-const getTimeOnly = (slot: string): string => {
-  const formatted = sessionsStore.formatTime(slot)
-  return formatted.split(' ')[0]
-}
-
-const getAmPm = (slot: string): string => {
-  const formatted = sessionsStore.formatTime(slot)
-  return formatted.split(' ')[1]
 }
 
 const getSlotClasses = (slot: string): string => {

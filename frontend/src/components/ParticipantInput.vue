@@ -1,8 +1,8 @@
 <template>
-  <div class="space-y-4">
+  <div class="space-y-3">
     <!-- Participant Name Input -->
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-2">
+      <label class="block text-sm font-medium text-gray-700 mb-1">
         Participant Name
       </label>
       <div class="relative">
@@ -14,7 +14,7 @@
           type="text"
           required
           placeholder="Enter participant name"
-          class="input-field"
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
           :class="{ 'border-green-300': selectedParticipant && !isNewParticipant }"
         >
         
@@ -55,7 +55,7 @@
       </div>
       
       <!-- Status message -->
-      <div v-if="localParticipantName.length > 1" class="mt-2 text-sm">
+      <div v-if="localParticipantName.length > 1" class="mt-1 text-sm">
         <div v-if="selectedParticipant && !isNewParticipant" class="text-green-700 flex items-center">
           <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
@@ -72,12 +72,12 @@
     </div>
 
     <!-- Age and Gender - Show conditionally -->
-    <div v-if="showAgeGenderFields" class="grid grid-cols-2 gap-4">
+    <div v-if="showAgeGenderFields" class="grid grid-cols-2 gap-3">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">
+        <label class="block text-sm font-medium text-gray-700 mb-1">
           Age
-          <span v-if="isNewParticipant" class="text-green-600 text-xs">(New participant)</span>
-          <span v-else-if="selectedParticipant" class="text-blue-600 text-xs">(Can edit)</span>
+          <span v-if="isNewParticipant" class="text-green-600 text-xs">(New)</span>
+          <span v-else-if="selectedParticipant" class="text-blue-600 text-xs">(Edit)</span>
         </label>
         <input
           v-model.number="localAge"
@@ -87,7 +87,7 @@
           max="120"
           placeholder="Age"
           :disabled="selectedParticipant && selectedParticipant.age"
-          class="input-field"
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
           :class="{
             'bg-gray-100 cursor-not-allowed': selectedParticipant && selectedParticipant.age
           }"
@@ -95,16 +95,16 @@
       </div>
       
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">
+        <label class="block text-sm font-medium text-gray-700 mb-1">
           Gender
-          <span v-if="isNewParticipant" class="text-green-600 text-xs">(New participant)</span>
-          <span v-else-if="selectedParticipant" class="text-blue-600 text-xs">(Can edit)</span>
+          <span v-if="isNewParticipant" class="text-green-600 text-xs">(New)</span>
+          <span v-else-if="selectedParticipant" class="text-blue-600 text-xs">(Edit)</span>
         </label>
         <select
           v-model="localGender"
           @change="handleGenderChange"
           :disabled="selectedParticipant && selectedParticipant.gender"
-          class="input-field"
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
           :class="{
             'bg-gray-100 cursor-not-allowed': selectedParticipant && selectedParticipant.gender
           }"

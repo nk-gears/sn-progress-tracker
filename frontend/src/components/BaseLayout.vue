@@ -61,12 +61,12 @@
     </nav>
 
     <!-- Main Content -->
-    <main class="pb-20">
+    <main :class="hideNavTabs ? 'pb-4' : 'pb-20'">
       <slot />
     </main>
 
     <!-- Bottom Navigation -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30 safe-bottom">
+    <nav v-if="!hideNavTabs" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30 safe-bottom">
       <div class="grid grid-cols-3 h-16">
         <router-link
           to="/dashboard"
@@ -138,6 +138,7 @@ const currentBranch = computed(() => authStore.currentBranch)
 const userBranches = computed(() => authStore.userBranches)
 const currentRoute = computed(() => route.name)
 const isDevelopment = computed(() => import.meta.env.DEV)
+const hideNavTabs = true;//computed(() => import.meta.env.VITE_HIDE_NAV_TABS === 'true')
 
 // Methods
 const switchBranch = async (branch: Branch) => {

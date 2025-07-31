@@ -89,7 +89,7 @@ src/
    ```
 
 4. **Open your browser:**
-   Navigate to `http://localhost:3000`
+   Navigate to `http://localhost:8080`
 
 ### Development Commands
 

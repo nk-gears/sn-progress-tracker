@@ -1,6 +1,32 @@
 <template>
   <BaseLayout>
-    <div class="p-4">
+    <div class="p-4 max-w-md mx-auto">
+      <!-- Metrics Section -->
+      <div class="card p-4 mb-6">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <span class="text-xl">⏱️</span>
+            </div>
+            <div>
+              <p class="text-sm text-gray-600">Total Hours of Meditation so far</p>
+              <p class="text-xl font-bold text-primary">{{ totalHours }} hours</p>
+            </div>
+          </div>
+          
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+              <span class="text-xl">🎯</span>
+            </div>
+            <div class="text-right">
+              <p class="text-sm text-gray-600">Hours to Catchup</p>
+              <p class="text-xl font-bold text-orange-600">{{ catchupHours }} Hours</p>
+              <p class="text-xs text-gray-500">in next {{ daysRemaining }} days</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <div class="card p-6">
         <h2 class="text-xl font-bold text-primary mb-6 flex items-center">
           <span class="mr-2">📝</span>
@@ -14,8 +40,12 @@
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
             </svg>
-            <span class="font-medium">
-              Editing session from {{ formatTime(editingSession.start_time) }}
+            <span class="font-medium flex items-center">
+              Editing session from 
+              <span class="ml-1 flex flex-col text-center">
+                <span class="font-semibold">{{ getTimeOnly(editingSession.start_time) }}</span>
+                <span class="text-xs">{{ getAmPm(editingSession.start_time) }}</span>
+              </span>
             </span>
           </div>
           <button @click="cancelEdit" class="mt-2 text-sm text-blue-600 hover:text-blue-800">
@@ -23,7 +53,22 @@
           </button>
         </div>
 
-        <form @submit.prevent="handleSubmit" class="space-y-6">
+        <form @submit.prevent="handleSubmit" class="space-y-4">
+
+          <!-- Session Date -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Session Date
+            </label>
+            <input
+              v-model="sessionForm.session_date"
+              type="date"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+              :max="today"
+            >
+          </div>
+
           <!-- Participant Input Component -->
           <ParticipantInput
             v-model="sessionForm.participant_name"
@@ -31,20 +76,6 @@
             v-model:gender="sessionForm.participant_gender"
             @participant-selected="handleParticipantSelected"
           />
-
-          <!-- Session Date -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Session Date
-            </label>
-            <input
-              v-model="sessionForm.session_date"
-              type="date"
-              required
-              class="input-field"
-              :max="today"
-            >
-          </div>
 
           <!-- Time Slot Selector Component -->
           <TimeSlotSelector
@@ -90,12 +121,64 @@
           </div>
         </form>
       </div>
+
+      <!-- Sessions for Selected Date -->
+      <div v-if="dateSessionsList.length > 0" class="card p-4 mt-4">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+          <span class="mr-2">📋</span>
+          Sessions for {{ formatSelectedDate }}
+          <span class="ml-2 text-sm font-normal text-gray-600">({{ dateSessionsList.length }})</span>
+        </h3>
+        
+        <div class="space-y-2">
+          <div
+            v-for="session in dateSessionsList"
+            :key="session.id"
+            class="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+          >
+            <div class="flex-1">
+              <div class="font-medium text-gray-900">{{ session.participant_name }}</div>
+              <div class="text-sm text-gray-600 flex items-center space-x-1">
+                <span class="flex items-baseline space-x-1">
+                  <span class="font-medium">{{ getTimeOnly(session.start_time) }}</span>
+                  <span class="text-xs">{{ getAmPm(session.start_time) }}</span>
+                </span>
+                <span>•</span>
+                <span>{{ session.duration_minutes }}min</span>
+              </div>
+            </div>
+            <div class="flex items-center space-x-2">
+              <div class="text-xs text-gray-500">
+                {{ new Date(session.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) }}
+              </div>
+              <button
+                @click="editSession(session)"
+                class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                title="Edit session"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+              </button>
+              <button
+                @click="deleteSession(session)"
+                class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Delete session"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1-1H8a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </BaseLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseLayout from '@/components/BaseLayout.vue'
 import ParticipantInput from '@/components/ParticipantInput.vue'
@@ -104,7 +187,8 @@ import { useSessionsStore } from '@/stores/sessions'
 import { useParticipantsStore } from '@/stores/participants'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
-import type { Participant } from '@/types'
+import { apiService } from '@/services/apiService'
+import type { Participant, Session } from '@/types'
 
 const router = useRouter()
 const sessionsStore = useSessionsStore()
@@ -118,6 +202,7 @@ const error = ref('')
 const success = ref('')
 const selectedParticipant = ref<Participant | null>(null)
 const currentDuration = ref(0)
+const dateSessionsList = ref<Session[]>([])
 
 // Computed properties
 const sessionForm = computed(() => sessionsStore.sessionForm)
@@ -129,6 +214,36 @@ const selectedTimeRange = computed({
 })
 const editingSession = computed(() => sessionsStore.editingSession)
 const today = computed(() => new Date().toISOString().slice(0, 10))
+
+// Metrics computed properties
+const totalHours = computed(() => {
+  return sessionsStore.dashboardData?.summary?.total_hours || 0
+})
+
+const catchupHours = computed(() => {
+  // Assuming a target of 48 hours for catchup (example)
+  const targetHours = 48
+  const currentHours = totalHours.value
+  return Math.max(0, targetHours - currentHours)
+})
+
+const daysRemaining = computed(() => {
+  // Calculate days remaining until end of month
+  const now = new Date()
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  const diffTime = endOfMonth.getTime() - now.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return Math.max(0, diffDays)
+})
+
+const formatSelectedDate = computed(() => {
+  const date = new Date(sessionForm.value.session_date)
+  return date.toLocaleDateString('en-US', { 
+    weekday: 'short', 
+    month: 'short', 
+    day: 'numeric' 
+  })
+})
 
 const isFormValid = computed(() => {
   return (
@@ -142,6 +257,54 @@ const isFormValid = computed(() => {
 
 // Methods
 const formatTime = (time: string) => sessionsStore.formatTime(time)
+
+const getTimeOnly = (time: string): string => {
+  const formatted = sessionsStore.formatTime(time)
+  return formatted.split(' ')[0]
+}
+
+const getAmPm = (time: string): string => {
+  const formatted = sessionsStore.formatTime(time)
+  return formatted.split(' ')[1]
+}
+
+const loadSessionsForDate = async (date: string) => {
+  const branchId = authStore.currentBranch?.id
+  if (!branchId) return
+
+  try {
+    const response = await apiService.sessions.getByDate(branchId, date)
+    if (response.success) {
+      dateSessionsList.value = response.sessions || []
+    }
+  } catch (error) {
+    console.error('Error loading sessions for date:', error)
+  }
+}
+
+const editSession = (session: Session) => {
+  sessionsStore.startEdit(session)
+  // Scroll to top to show edit form
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+const deleteSession = async (session: Session) => {
+  if (!confirm(`Delete session for ${session.participant_name}?`)) return
+
+  try {
+    const success = await sessionsStore.deleteSession(session.id)
+    if (success) {
+      // Remove from local list
+      dateSessionsList.value = dateSessionsList.value.filter(s => s.id !== session.id)
+      appStore.showSuccess('Session deleted successfully')
+    } else {
+      appStore.showError('Failed to delete session')
+    }
+  } catch (error) {
+    console.error('Error deleting session:', error)
+    appStore.showError('Failed to delete session')
+  }
+}
 
 const handleParticipantSelected = (participant: Participant | null) => {
   selectedParticipant.value = participant
@@ -220,6 +383,24 @@ const handleSubmit = async () => {
         success_msg = 'Session recorded successfully!'
         sessionsStore.clearForm()
         participantsStore.clearSearch()
+        
+        // Add new session to local list if it's for the same date
+        if (sessionData.session_date === sessionForm.value.session_date) {
+          // Create a mock session object for immediate display
+          const newSession: Session = {
+            id: Date.now(), // Temporary ID
+            participant_id: sessionData.participant_id,
+            participant_name: sessionData.participant_name,
+            branch_id: sessionData.branch_id,
+            volunteer_id: sessionData.volunteer_id,
+            session_date: sessionData.session_date,
+            start_time: sessionData.start_time,
+            duration_minutes: sessionData.duration_minutes,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+          dateSessionsList.value.unshift(newSession)
+        }
       } else {
         error.value = 'Failed to record session'
         return
@@ -229,10 +410,13 @@ const handleSubmit = async () => {
     success.value = success_msg
     appStore.showSuccess(success_msg)
     
-    // Clear form and redirect to dashboard after a delay
+    // Load updated sessions for the current date
+    loadSessionsForDate(sessionForm.value.session_date)
+    
+    // Clear success message after delay
     setTimeout(() => {
-      router.push('/dashboard')
-    }, 1500)
+      success.value = ''
+    }, 3000)
     
   } catch (err) {
     console.error('Session submission error:', err)
@@ -253,8 +437,21 @@ const cancelEdit = () => {
   }, 3000)
 }
 
+// Watch for date changes to load sessions
+watch(() => sessionForm.value.session_date, (newDate) => {
+  if (newDate) {
+    loadSessionsForDate(newDate)
+  }
+})
+
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
+  // Load dashboard data for metrics
+  await sessionsStore.loadDashboardData()
+  
+  // Load sessions for current date
+  loadSessionsForDate(sessionForm.value.session_date)
+  
   // If editing, populate participant data
   if (editingSession.value) {
     const participant = participantsStore.participants.find(

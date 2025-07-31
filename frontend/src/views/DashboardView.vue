@@ -112,8 +112,13 @@
           >
             <div class="flex-1">
               <div class="font-medium">{{ session.participant_name }}</div>
-              <div class="text-sm text-gray-600">
-                {{ formatTime(session.start_time) }} • {{ session.duration_minutes }}min
+              <div class="text-sm text-gray-600 flex items-center space-x-1">
+                <span class="flex items-baseline space-x-1">
+                  <span class="font-medium">{{ getTimeOnly(session.start_time) }}</span>
+                  <span class="text-xs">{{ getAmPm(session.start_time) }}</span>
+                </span>
+                <span>•</span>
+                <span>{{ session.duration_minutes }}min</span>
               </div>
             </div>
             <div class="flex items-center space-x-2">
@@ -191,6 +196,16 @@ const todaySessions = computed(() => sessionsStore.todaySessions)
 const formattedMonth = computed(() => sessionsStore.formattedMonth)
 const isLoading = computed(() => sessionsStore.isLoading)
 const formatTime = (time: string) => sessionsStore.formatTime(time)
+
+const getTimeOnly = (time: string): string => {
+  const formatted = sessionsStore.formatTime(time)
+  return formatted.split(' ')[0]
+}
+
+const getAmPm = (time: string): string => {
+  const formatted = sessionsStore.formatTime(time)
+  return formatted.split(' ')[1]
+}
 
 // Methods
 const editSession = (session: Session) => {

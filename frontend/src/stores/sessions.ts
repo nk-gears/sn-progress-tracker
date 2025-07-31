@@ -21,7 +21,7 @@ export const useSessionsStore = defineStore('sessions', () => {
   })
   
   // Time selection state
-  const selectedTimePeriod = ref<'All' | 'Morning' | 'Afternoon' | 'Evening'>('All')
+  const selectedTimePeriod = ref<'All' | 'Morning' | 'Afternoon' | 'Evening'>('Morning')
   const selectedTimeRange = ref<{ start: string | null; end: string | null }>({
     start: null,
     end: null
@@ -38,10 +38,10 @@ export const useSessionsStore = defineStore('sessions', () => {
   })
   
   const timePeriods = computed(() => [
-    { name: 'All', start: '07:00', end: '22:00' },
     { name: 'Morning', start: '07:00', end: '12:00' },
     { name: 'Afternoon', start: '12:00', end: '17:00' },
-    { name: 'Evening', start: '17:00', end: '22:00' }
+    { name: 'Evening', start: '17:00', end: '22:00' },
+    { name: 'All', start: '07:00', end: '22:00' }
   ])
   
   const filteredTimeSlots = computed(() => {
