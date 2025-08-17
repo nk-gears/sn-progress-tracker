@@ -25,14 +25,7 @@
       </div>
 
       <!-- Touch instructions -->
-      <div class="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg border border-blue-200">
-        <div class="flex items-center">
-          <svg class="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
-          <span class="text-blue-700">Touch and drag to select time range. Minimum 30 minutes.</span>
-        </div>
-      </div>
+
 
       <!-- Time slots -->
       <div 
@@ -59,45 +52,69 @@
     </div>
 
     <!-- Quick duration buttons -->
-    <div class="space-y-1">
-      <h4 class="text-sm font-medium text-gray-700">Quick select duration</h4>
-      <div class="grid grid-cols-4 gap-2">
+ 
+
+    <!-- Selected time ranges display -->
+    <div v-if="selectedRanges.length > 0" class="space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="font-medium text-gray-800">Selected Time Ranges</div>
         <button
-          v-for="duration in [30, 60, 90, 120]"
-          :key="duration"
-          @click="quickSelectDuration(duration)"
-          class="py-1 px-3 rounded-lg text-sm font-medium touch-target transition-colors"
-          :class="selectedDuration === duration
-            ? 'bg-primary text-white'
-            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+          @click="clearAllSelections"
+          class="text-sm text-red-600 hover:text-red-800 font-medium"
         >
-          {{ duration }}min
+          Clear All
         </button>
       </div>
-    </div>
-
-    <!-- Selected time display -->
-    <div v-if="selectedTimeRange.start && selectedTimeRange.end" class="card p-4 bg-green-50 border-green-200">
-      <div class="flex items-center justify-between">
-        <div>
-          <div class="font-medium text-green-800">Selected Time</div>
-          <div class="text-sm text-green-700 flex items-center space-x-2">
-            <div class="text-center">
-              <div class="font-semibold">{{ getTimeOnly(selectedTimeRange.start) }}</div>
-              <div class="text-xs">{{ getAmPm(selectedTimeRange.start) }}</div>
+      
+      <div class="space-y-2">
+        <div
+          v-for="(range, index) in selectedRanges"
+          :key="index"
+          class="card p-3 bg-green-50 border-green-200"
+        >
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2 text-sm text-green-700">
+              <div class="text-center">
+                <div class="font-semibold">{{ getTimeOnly(range.start!) }}</div>
+                <div class="text-xs">{{ getAmPm(range.start!) }}</div>
+              </div>
+              <span class="mx-1">-</span>
+              <div class="text-center">
+                <div class="font-semibold">{{ getTimeOnly(range.end!) }}</div>
+                <div class="text-xs">{{ getAmPm(range.end!) }}</div>
+              </div>
             </div>
-            <span class="mx-2">-</span>
-            <div class="text-center">
-              <div class="font-semibold">{{ getTimeOnly(selectedTimeRange.end) }}</div>
-              <div class="text-xs">{{ getAmPm(selectedTimeRange.end) }}</div>
+            <div class="flex items-center space-x-2">
+              <div class="text-right text-xs">
+                <div class="font-semibold text-green-800">
+                  {{ sessionsStore.timeToMinutes(range.end!) - sessionsStore.timeToMinutes(range.start!) }}min
+                </div>
+              </div>
+              <button
+                @click="removeRange(index)"
+                class="text-red-500 hover:text-red-700 text-xs"
+                title="Remove this range"
+              >
+                ✕
+              </button>
             </div>
           </div>
         </div>
-        <div class="text-right">
-          <div class="font-semibold text-green-800">{{ selectedDuration }}min</div>
-          <div class="text-xs text-green-600">{{ Math.round(selectedDuration / 60 * 100) / 100 }}h</div>
+      </div>
+      
+      <div class="card p-3 bg-blue-50 border-blue-200">
+        <div class="flex items-center justify-between text-sm">
+          <div class="font-medium text-blue-800">Total Duration</div>
+          <div class="font-bold text-blue-800">
+            {{ selectedDuration }}min ({{ Math.round(selectedDuration / 60 * 100) / 100 }}h)
+          </div>
         </div>
       </div>
+    </div>
+    
+    <!-- Instructions -->
+    <div v-if="selectedRanges.length === 0" class="text-center text-gray-500 text-sm p-4">
+      Drag to select meditation time ranges. Click on range starts to remove them.
     </div>
   </div>
 </template>
@@ -105,15 +122,15 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useSessionsStore } from '@/stores/sessions'
-import type { TimeRange } from '@/types'
+import type { TimeRange, MultipleTimeRanges } from '@/types'
 
 // Props and emits
 interface Props {
-  modelValue: TimeRange
+  modelValue: MultipleTimeRanges
 }
 
 interface Emits {
-  (e: 'update:modelValue', value: TimeRange): void
+  (e: 'update:modelValue', value: MultipleTimeRanges): void
   (e: 'duration-changed', duration: number): void
 }
 
@@ -131,19 +148,21 @@ const currentSlot = ref<string | null>(null)
 const timePeriods = computed(() => sessionsStore.timePeriods)
 const selectedTimePeriod = computed(() => sessionsStore.selectedTimePeriod)
 const filteredTimeSlots = computed(() => sessionsStore.filteredTimeSlots)
-const selectedTimeRange = computed(() => props.modelValue)
-const selectedDuration = computed(() => {
-  if (!selectedTimeRange.value.start || !selectedTimeRange.value.end) return 0
-  const start = sessionsStore.timeToMinutes(selectedTimeRange.value.start)
-  const end = sessionsStore.timeToMinutes(selectedTimeRange.value.end)
-  return end - start
-})
+const selectedRanges = computed(() => props.modelValue.ranges)
+const selectedDuration = computed(() => props.modelValue.totalDuration)
+
+// Current selection state for new range being selected
+const currentSelection = ref<TimeRange>({ start: null, end: null })
 
 // Methods
 const selectTimePeriod = (period: 'All' | 'Morning' | 'Afternoon' | 'Evening') => {
   sessionsStore.setTimePeriod(period)
-  // Clear selection when changing period
-  emit('update:modelValue', { start: null, end: null })
+  // Keep existing selections when changing period
+  // Only clear current selection if user is in middle of selecting
+  if (isSelecting.value) {
+    isSelecting.value = false
+    currentSelection.value = { start: null, end: null }
+  }
 }
 
 const formatTime = (time: string): string => {
@@ -165,36 +184,45 @@ const getAmPm = (slot: string): string => {
 }
 
 const getSlotClasses = (slot: string): string => {
-  const isInRange = isSlotInRange(slot)
-  const isStart = slot === selectedTimeRange.value.start
-  const isEnd = isSlotBeforeTime(slot, selectedTimeRange.value.end || '')
+  const isInSelectedRanges = isSlotInSelectedRanges(slot)
+  const isInCurrentSelection = isSlotInCurrentSelection(slot)
+  const isStart = isSlotRangeStart(slot)
   
-  if (isStart && isEnd && selectedDuration.value === 30) {
-    return 'bg-primary text-white shadow-lg transform scale-105'
-  } else if (isStart) {
-    return 'bg-primary text-white shadow-lg'
-  } else if (isInRange) {
-    return 'bg-primary bg-opacity-70 text-white'
+  if (isStart) {
+    return 'bg-primary text-white shadow-lg transform scale-105 border-2 border-primary'
+  } else if (isInSelectedRanges) {
+    return 'bg-primary bg-opacity-80 text-white'
+  } else if (isInCurrentSelection) {
+    return 'bg-blue-300 text-white'
   } else {
     return 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
   }
 }
 
-const isSlotInRange = (slot: string): boolean => {
-  if (!selectedTimeRange.value.start || !selectedTimeRange.value.end) return false
+const isSlotInSelectedRanges = (slot: string): boolean => {
+  const slotMinutes = sessionsStore.timeToMinutes(slot)
+  
+  return selectedRanges.value.some(range => {
+    if (!range.start || !range.end) return false
+    const startMinutes = sessionsStore.timeToMinutes(range.start)
+    const endMinutes = sessionsStore.timeToMinutes(range.end)
+    return slotMinutes >= startMinutes && slotMinutes < endMinutes
+  })
+}
+
+const isSlotInCurrentSelection = (slot: string): boolean => {
+  if (!currentSelection.value.start || !currentSelection.value.end) return false
   
   const slotMinutes = sessionsStore.timeToMinutes(slot)
-  const startMinutes = sessionsStore.timeToMinutes(selectedTimeRange.value.start)
-  const endMinutes = sessionsStore.timeToMinutes(selectedTimeRange.value.end)
+  const startMinutes = sessionsStore.timeToMinutes(currentSelection.value.start)
+  const endMinutes = sessionsStore.timeToMinutes(currentSelection.value.end)
   
   return slotMinutes >= startMinutes && slotMinutes < endMinutes
 }
 
-const isSlotBeforeTime = (slot: string, endTime: string): boolean => {
-  if (!endTime) return false
-  const slotMinutes = sessionsStore.timeToMinutes(slot)
-  const endMinutes = sessionsStore.timeToMinutes(endTime)
-  return slotMinutes < endMinutes
+const isSlotRangeStart = (slot: string): boolean => {
+  return selectedRanges.value.some(range => range.start === slot) || 
+         currentSelection.value.start === slot
 }
 
 const getSlotFromEvent = (event: TouchEvent | MouseEvent): string | null => {
@@ -218,12 +246,19 @@ const getSlotFromEvent = (event: TouchEvent | MouseEvent): string | null => {
 }
 
 const startSelection = (slot: string) => {
+  // Check if clicking on an existing range start - if so, remove that range
+  const existingRangeIndex = selectedRanges.value.findIndex(range => range.start === slot)
+  if (existingRangeIndex !== -1) {
+    removeRange(existingRangeIndex)
+    return
+  }
+  
   isSelecting.value = true
   startSlot.value = slot
   currentSlot.value = slot
   
   const nextSlot = getNextSlot(slot)
-  emit('update:modelValue', { start: slot, end: nextSlot })
+  currentSelection.value = { start: slot, end: nextSlot }
   
   // Haptic feedback
   if (navigator.vibrate) {
@@ -240,20 +275,52 @@ const updateSelection = (slot: string) => {
   
   if (currentIndex >= startIndex) {
     const endSlot = getNextSlot(slot)
-    emit('update:modelValue', { start: startSlot.value, end: endSlot })
+    currentSelection.value = { start: startSlot.value, end: endSlot }
   }
 }
 
 const endSelection = () => {
+  if (!isSelecting.value) return
+  
   isSelecting.value = false
   
-  // Emit duration change
-  emit('duration-changed', selectedDuration.value)
+  // Add the current selection to the ranges array
+  if (currentSelection.value.start && currentSelection.value.end) {
+    addRange(currentSelection.value)
+  }
+  
+  // Clear current selection
+  currentSelection.value = { start: null, end: null }
   
   // Remove any active states
   document.querySelectorAll('.time-slot').forEach(el => {
     el.classList.remove('touching')
   })
+}
+
+const addRange = (range: TimeRange) => {
+  const newRanges = [...selectedRanges.value, range]
+  const totalDuration = calculateTotalDuration(newRanges)
+  
+  emit('update:modelValue', { ranges: newRanges, totalDuration })
+  emit('duration-changed', totalDuration)
+}
+
+const removeRange = (index: number) => {
+  const newRanges = selectedRanges.value.filter((_, i) => i !== index)
+  const totalDuration = calculateTotalDuration(newRanges)
+  
+  emit('update:modelValue', { ranges: newRanges, totalDuration })
+  emit('duration-changed', totalDuration)
+}
+
+const calculateTotalDuration = (ranges: TimeRange[]): number => {
+  return ranges.reduce((total, range) => {
+    if (!range.start || !range.end) return total
+    const start = sessionsStore.timeToMinutes(range.start)
+    const end = sessionsStore.timeToMinutes(range.end)
+    return total + (end - start)
+  }, 0)
 }
 
 const getNextSlot = (slot: string): string => {
@@ -269,16 +336,10 @@ const getNextSlot = (slot: string): string => {
   return sessionsStore.minutesToTime(minutes)
 }
 
-const quickSelectDuration = (duration: number) => {
-  const firstSlot = filteredTimeSlots.value[0]
-  if (!firstSlot) return
-  
-  const startMinutes = sessionsStore.timeToMinutes(firstSlot)
-  const endMinutes = startMinutes + duration
-  const endSlot = sessionsStore.minutesToTime(endMinutes)
-  
-  emit('update:modelValue', { start: firstSlot, end: endSlot })
-  emit('duration-changed', duration)
+const clearAllSelections = () => {
+  emit('update:modelValue', { ranges: [], totalDuration: 0 })
+  emit('duration-changed', 0)
+  currentSelection.value = { start: null, end: null }
 }
 
 // Touch event handlers
@@ -314,7 +375,7 @@ const handleMouseEnd = () => {
 }
 
 // Watch for external changes
-watch(() => selectedDuration.value, (newDuration) => {
+watch(() => props.modelValue.totalDuration, (newDuration) => {
   emit('duration-changed', newDuration)
 })
 

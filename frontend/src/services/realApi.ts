@@ -11,7 +11,7 @@ import type {
 } from '@/types'
 
 // Real API configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '../backend'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/sn-progress/api'
 const API_TIMEOUT = 10000
 
 // Helper function for API requests
@@ -47,7 +47,7 @@ export const realApi = {
   auth: {
     async login(credentials: LoginCredentials): Promise<AuthResponse> {
       try {
-        const response = await apiRequest('auth.php', {
+        const response = await apiRequest('api.php/auth', {
           method: 'POST',
           body: JSON.stringify(credentials)
         })
@@ -81,7 +81,7 @@ export const realApi = {
           ...(search && { search })
         })
 
-        const response = await apiRequest(`participants.php?${params}`)
+        const response = await apiRequest(`api.php/participants?${params}`)
         const data = await response.json()
 
         if (!response.ok) {
@@ -109,7 +109,7 @@ export const realApi = {
           action: 'search'
         })
 
-        const response = await apiRequest(`participants.php?${params}`)
+        const response = await apiRequest(`api.php/participants?${params}`)
         const data = await response.json()
 
         if (!response.ok) {
@@ -131,7 +131,7 @@ export const realApi = {
 
     async create(participantData: ParticipantForm): Promise<ParticipantResponse> {
       try {
-        const response = await apiRequest('participants.php', {
+        const response = await apiRequest('api.php/participants', {
           method: 'POST',
           body: JSON.stringify(participantData)
         })
@@ -157,7 +157,7 @@ export const realApi = {
 
     async update(id: number, data: Partial<Participant>): Promise<ParticipantResponse> {
       try {
-        const response = await apiRequest('participants.php', {
+        const response = await apiRequest('api.php/participants', {
           method: 'PUT',
           body: JSON.stringify({ id, ...data })
         })
@@ -182,13 +182,35 @@ export const realApi = {
     },
 
     async findOrCreate(name: string, branchId: number, age?: number, gender?: string): Promise<ParticipantResponse> {
-      // Use the create endpoint which handles find-or-create logic
-      return this.create({
-        name,
-        age: age || null,
-        gender: gender || null,
-        branch_id: branchId
-      })
+      try {
+        const response = await apiRequest('api.php/participants', {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'findOrCreate',
+            name,
+            branch_id: branchId,
+            age: age || null,
+            gender: gender || null
+          })
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          return {
+            success: false,
+            message: data.message || data.error || 'Failed to find or create participant'
+          }
+        }
+
+        return data
+      } catch (error) {
+        console.error('Find or create participant API error:', error)
+        return {
+          success: false,
+          message: 'Network error. Please check your connection.'
+        }
+      }
     }
   },
 
@@ -201,7 +223,7 @@ export const realApi = {
           date
         })
 
-        const response = await apiRequest(`sessions.php?${params}`)
+        const response = await apiRequest(`api.php/sessions?${params}`)
         const data = await response.json()
 
         if (!response.ok) {
@@ -223,7 +245,7 @@ export const realApi = {
 
     async create(sessionData: SessionCreateData): Promise<SessionResponse> {
       try {
-        const response = await apiRequest('sessions.php', {
+        const response = await apiRequest('api.php/sessions', {
           method: 'POST',
           body: JSON.stringify(sessionData)
         })
@@ -249,7 +271,7 @@ export const realApi = {
 
     async update(id: number, sessionData: Partial<Session>): Promise<SessionResponse> {
       try {
-        const response = await apiRequest('sessions.php', {
+        const response = await apiRequest('api.php/sessions', {
           method: 'PUT',
           body: JSON.stringify({ id, ...sessionData })
         })
@@ -277,7 +299,7 @@ export const realApi = {
       try {
         const params = new URLSearchParams({ id: id.toString() })
         
-        const response = await apiRequest(`sessions.php?${params}`, {
+        const response = await apiRequest(`api.php/sessions?${params}`, {
           method: 'DELETE'
         })
 
@@ -310,7 +332,7 @@ export const realApi = {
           month
         })
 
-        const response = await apiRequest(`dashboard.php?${params}`)
+        const response = await apiRequest(`api.php/dashboard?${params}`)
         const data = await response.json()
 
         if (!response.ok) {

@@ -1,5 +1,5 @@
 <?php
-require_once 'config-mysqli.php';
+require_once 'config.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     sendResponse(['error' => 'Method not allowed'], 405);
@@ -16,29 +16,24 @@ $mobile = trim($input['mobile']);
 $password = $input['password'];
 
 try {
-    // Get user by mobile
-    $user = fetchRow(
-        "SELECT id, name, password FROM medt_users WHERE mobile = ?",
-        [$mobile],
-        's'
-    );
+    $stmt = $pdo->prepare("SELECT id, name, password FROM users WHERE mobile = ?");
+    $stmt->execute([$mobile]);
+    $user = $stmt->fetch();
 
-    if (!$user) {
-        sendResponse(['success' => false, 'message' => 'Invalid credentials'], 401);
+    if (!$user || !password_verify($password, $user['password'])) {
+        sendResponse(['error' => 'Invalid credentials'], 401);
     }
 
-    // if (!password_verify($password, $user['password'])) {
-    //     sendResponse(['success' => false, 'message' => 'Invalid credentials'], 401);
-    // }
-
     // Get user's branches
-    $branches = fetchAll("
+    $stmt = $pdo->prepare("
         SELECT b.id, b.name, b.location 
-        FROM medt_branches b 
-        JOIN medt_user_branches ub ON b.id = ub.branch_id 
+        FROM branches b 
+        JOIN user_branches ub ON b.id = ub.branch_id 
         WHERE ub.user_id = ?
         ORDER BY b.name
-    ", [$user['id']], 'i');
+    ");
+    $stmt->execute([$user['id']]);
+    $branches = $stmt->fetchAll();
 
     // Generate a simple token (in production, use proper JWT or session management)
     $token = 'auth_token_' . $user['id'] . '_' . time();
@@ -46,7 +41,7 @@ try {
     sendResponse([
         'success' => true,
         'user' => [
-            'id' => (int)$user['id'],
+            'id' => $user['id'],
             'name' => $user['name'],
             'mobile' => $mobile
         ],
@@ -54,8 +49,7 @@ try {
         'token' => $token
     ]);
 
-} catch (Exception $e) {
-    error_log('Auth error: ' . $e->getMessage());
-    sendResponse(['success' => false, 'message' => 'Authentication failed'], 500);
+} catch (PDOException $e) {
+    sendResponse(['error' => 'Authentication failed'], 500);
 }
 ?>

@@ -110,8 +110,8 @@ const selectBranch = async (branch: Branch) => {
     authStore.selectBranch(branch)
     appStore.showSuccess(`Selected ${branch.name}`)
     
-    // Navigate to dashboard
-    router.push('/dashboard')
+    // Navigate to data entry (Record tab)
+    router.push('/data-entry')
   } catch (error) {
     console.error('Branch selection error:', error)
     appStore.showError('Failed to select branch. Please try again.')
@@ -134,9 +134,9 @@ onMounted(() => {
     return
   }
   
-  // If already has selected branch, redirect to dashboard
+  // If already has selected branch, redirect to data entry (Record tab)
   if (authStore.hasSelectedBranch) {
-    router.push('/dashboard')
+    router.push('/data-entry')
     return
   }
   

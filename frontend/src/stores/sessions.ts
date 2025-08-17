@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Session, SessionForm, DashboardData } from '@/types'
+import type { Session, SessionForm, DashboardData, MultipleTimeRanges } from '@/types'
 import { apiService } from '@/services/apiService'
 import { useAuthStore } from './auth'
 
@@ -22,20 +22,11 @@ export const useSessionsStore = defineStore('sessions', () => {
   
   // Time selection state
   const selectedTimePeriod = ref<'All' | 'Morning' | 'Afternoon' | 'Evening'>('Morning')
-  const selectedTimeRange = ref<{ start: string | null; end: string | null }>({
-    start: null,
-    end: null
+  const selectedTimeRanges = ref<MultipleTimeRanges>({
+    ranges: [],
+    totalDuration: 0
   })
   const isSelecting = ref(false)
-  
-  // Getters
-  const selectedDuration = computed(() => {
-    if (!selectedTimeRange.value.start || !selectedTimeRange.value.end) return 0
-    
-    const start = timeToMinutes(selectedTimeRange.value.start)
-    const end = timeToMinutes(selectedTimeRange.value.end)
-    return end - start
-  })
   
   const timePeriods = computed(() => [
     { name: 'Morning', start: '07:00', end: '12:00' },
@@ -197,11 +188,15 @@ export const useSessionsStore = defineStore('sessions', () => {
       session_date: session.session_date
     }
     
-    // Set time range
-    selectedTimeRange.value.start = session.start_time
+    // Set time range as single range for editing
     const startMinutes = timeToMinutes(session.start_time)
     const endMinutes = startMinutes + session.duration_minutes
-    selectedTimeRange.value.end = minutesToTime(endMinutes)
+    const endTime = minutesToTime(endMinutes)
+    
+    selectedTimeRanges.value = {
+      ranges: [{ start: session.start_time, end: endTime }],
+      totalDuration: session.duration_minutes
+    }
     
     // Set time period based on start time (default to All for wider range)
     selectedTimePeriod.value = 'All'
@@ -219,18 +214,25 @@ export const useSessionsStore = defineStore('sessions', () => {
       participant_gender: null,
       session_date: new Date().toISOString().slice(0, 10)
     }
-    selectedTimeRange.value = { start: null, end: null }
+    selectedTimeRanges.value = { ranges: [], totalDuration: 0 }
     isSelecting.value = false
     editingSession.value = null
   }
   
   const setTimePeriod = (period: 'All' | 'Morning' | 'Afternoon' | 'Evening') => {
     selectedTimePeriod.value = period
-    selectedTimeRange.value = { start: null, end: null }
+    // Keep existing selections when changing time period
   }
   
   const selectTimeRange = (start: string, end: string) => {
-    selectedTimeRange.value = { start, end }
+    const startMinutes = timeToMinutes(start)
+    const endMinutes = timeToMinutes(end)
+    const duration = endMinutes - startMinutes
+    
+    selectedTimeRanges.value = {
+      ranges: [{ start, end }],
+      totalDuration: duration
+    }
   }
   
   const resetStore = () => {
@@ -251,11 +253,10 @@ export const useSessionsStore = defineStore('sessions', () => {
     editingSession,
     sessionForm,
     selectedTimePeriod,
-    selectedTimeRange,
+    selectedTimeRanges,
     isSelecting,
     
     // Getters
-    selectedDuration,
     timePeriods,
     filteredTimeSlots,
     formattedMonth,

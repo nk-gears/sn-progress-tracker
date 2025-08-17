@@ -3,7 +3,12 @@
     "allow": [
       "Bash(mkdir:*)",
       "Bash(mv:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(rm:*)",
+      "Bash(chmod:*)",
+      "Bash(npm run dev:*)",
+      "Bash(php:*)",
+      "Bash(curl:*)"
     ],
     "deny": []
   }

@@ -1,5 +1,5 @@
 <?php
-require_once 'config-mysqli.php';
+require_once 'config.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $branch_id = $_GET['branch_id'] ?? null;
@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 
     try {
-        $sessions = fetchAll("
+        $stmt = $pdo->prepare("
             SELECT 
                 ms.id,
                 ms.participant_id,
@@ -22,16 +22,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 ms.duration_minutes,
                 ms.created_at,
                 ms.updated_at
-            FROM medt_meditation_sessions ms
-            JOIN medt_participants p ON ms.participant_id = p.id
+            FROM meditation_sessions ms
+            JOIN participants p ON ms.participant_id = p.id
             WHERE ms.branch_id = ? AND ms.session_date = ?
             ORDER BY ms.start_time DESC
-        ", [$branch_id, $date], 'is');
+        ");
+        $stmt->execute([$branch_id, $date]);
+        $sessions = $stmt->fetchAll();
 
         sendResponse(['success' => true, 'sessions' => $sessions]);
 
-    } catch (Exception $e) {
-        error_log('Sessions GET error: ' . $e->getMessage());
+    } catch (PDOException $e) {
         sendResponse(['success' => false, 'message' => 'Failed to fetch sessions'], 500);
     }
 
@@ -43,12 +44,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         sendResponse(['success' => false, 'message' => 'Missing required fields: ' . implode(', ', $missing)], 400);
     }
 
-    $participant_id = (int)$input['participant_id'];
-    $branch_id = (int)$input['branch_id'];
-    $volunteer_id = (int)$input['volunteer_id'];
+    $participant_id = $input['participant_id'];
+    $branch_id = $input['branch_id'];
+    $volunteer_id = $input['volunteer_id'];
     $session_date = $input['session_date'];
     $start_time = $input['start_time'];
-    $duration_minutes = (int)$input['duration_minutes'];
+    $duration_minutes = $input['duration_minutes'];
 
     // Validate duration
     if (!in_array($duration_minutes, [30, 60, 90, 120])) {
@@ -67,24 +68,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     try {
         // Verify participant exists
-        $participant = fetchRow(
-            "SELECT name FROM medt_participants WHERE id = ? AND branch_id = ?",
-            [$participant_id, $branch_id],
-            'ii'
-        );
+        $stmt = $pdo->prepare("SELECT name FROM participants WHERE id = ? AND branch_id = ?");
+        $stmt->execute([$participant_id, $branch_id]);
+        $participant = $stmt->fetch();
 
         if (!$participant) {
             sendResponse(['success' => false, 'message' => 'Participant not found'], 400);
         }
 
         // Create meditation session
-        $result = executeInsert("
-            INSERT INTO medt_meditation_sessions 
+        $stmt = $pdo->prepare("
+            INSERT INTO meditation_sessions 
             (participant_id, branch_id, volunteer_id, session_date, start_time, duration_minutes) 
             VALUES (?, ?, ?, ?, ?, ?)
-        ", [$participant_id, $branch_id, $volunteer_id, $session_date, $start_time, $duration_minutes], 'iiissi');
+        ");
+        $stmt->execute([$participant_id, $branch_id, $volunteer_id, $session_date, $start_time, $duration_minutes]);
         
-        $session_id = $result['insert_id'];
+        $session_id = $pdo->lastInsertId();
 
         // Return the created session with participant name
         $session = [
@@ -101,8 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         sendResponse(['success' => true, 'session' => $session, 'message' => 'Session recorded successfully']);
 
-    } catch (Exception $e) {
-        error_log('Sessions POST error: ' . $e->getMessage());
+    } catch (PDOException $e) {
         sendResponse(['success' => false, 'message' => 'Failed to record session'], 500);
     }
 
@@ -123,15 +122,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         sendResponse(['success' => false, 'message' => 'Session ID is required'], 400);
     }
 
-    // Build UPDATE query dynamically
+    // Extract fields to update
     $updateFields = [];
     $updateValues = [];
-    $types = '';
 
     if (isset($input['participant_id'])) {
         $updateFields[] = 'participant_id = ?';
-        $updateValues[] = (int)$input['participant_id'];
-        $types .= 'i';
+        $updateValues[] = $input['participant_id'];
     }
 
     if (isset($input['session_date'])) {
@@ -140,7 +137,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         $updateFields[] = 'session_date = ?';
         $updateValues[] = $input['session_date'];
-        $types .= 's';
     }
 
     if (isset($input['start_time'])) {
@@ -149,7 +145,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         $updateFields[] = 'start_time = ?';
         $updateValues[] = $input['start_time'];
-        $types .= 's';
     }
 
     if (isset($input['duration_minutes'])) {
@@ -157,31 +152,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             sendResponse(['success' => false, 'message' => 'Duration must be 30, 60, 90, or 120 minutes'], 400);
         }
         $updateFields[] = 'duration_minutes = ?';
-        $updateValues[] = (int)$input['duration_minutes'];
-        $types .= 'i';
+        $updateValues[] = $input['duration_minutes'];
     }
 
     if (empty($updateFields)) {
         sendResponse(['success' => false, 'message' => 'No fields to update'], 400);
     }
 
-    $updateValues[] = (int)$session_id;
-    $types .= 'i';
+    $updateValues[] = $session_id;
 
     try {
         // Update session
-        $sql = "UPDATE medt_meditation_sessions SET " . implode(', ', $updateFields) . " WHERE id = ?";
-        $result = executeQuery($sql, $updateValues, $types);
+        $sql = "UPDATE meditation_sessions SET " . implode(', ', $updateFields) . " WHERE id = ?";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($updateValues);
 
-        global $mysqli;
-        if ($mysqli->affected_rows === 0) {
+        if ($stmt->rowCount() === 0) {
             sendResponse(['success' => false, 'message' => 'Session not found or no changes made'], 404);
         }
 
         sendResponse(['success' => true, 'message' => 'Session updated successfully']);
 
-    } catch (Exception $e) {
-        error_log('Sessions PUT error: ' . $e->getMessage());
+    } catch (PDOException $e) {
         sendResponse(['success' => false, 'message' => 'Failed to update session'], 500);
     }
 
@@ -202,17 +194,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     try {
         // Delete session
-        executeQuery("DELETE FROM medt_meditation_sessions WHERE id = ?", [(int)$session_id], 'i');
+        $stmt = $pdo->prepare("DELETE FROM meditation_sessions WHERE id = ?");
+        $stmt->execute([$session_id]);
 
-        global $mysqli;
-        if ($mysqli->affected_rows === 0) {
+        if ($stmt->rowCount() === 0) {
             sendResponse(['success' => false, 'message' => 'Session not found'], 404);
         }
 
         sendResponse(['success' => true, 'message' => 'Session deleted successfully']);
 
-    } catch (Exception $e) {
-        error_log('Sessions DELETE error: ' . $e->getMessage());
+    } catch (PDOException $e) {
         sendResponse(['success' => false, 'message' => 'Failed to delete session'], 500);
     }
 

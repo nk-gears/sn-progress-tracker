@@ -4,7 +4,7 @@ CREATE DATABASE IF NOT EXISTS meditation_tracker;
 USE meditation_tracker;
 
 -- Users table for volunteers
-CREATE TABLE users (
+CREATE TABLE medt_users (
     id INT PRIMARY KEY AUTO_INCREMENT,
     mobile VARCHAR(15) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE users (
 );
 
 -- Branches table
-CREATE TABLE branches (
+CREATE TABLE medt_branches (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     location VARCHAR(200),
@@ -23,18 +23,18 @@ CREATE TABLE branches (
 );
 
 -- User-Branch mapping (many-to-many relationship)
-CREATE TABLE user_branches (
+CREATE TABLE medt_user_branches (
     id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,
     branch_id INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES medt_users(id) ON DELETE CASCADE,
+    FOREIGN KEY (branch_id) REFERENCES medt_branches(id) ON DELETE CASCADE,
     UNIQUE KEY unique_user_branch (user_id, branch_id)
 );
 
 -- Participants table
-CREATE TABLE participants (
+CREATE TABLE medt_participants (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     age INT NULL,
@@ -42,12 +42,12 @@ CREATE TABLE participants (
     branch_id INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,
+    FOREIGN KEY (branch_id) REFERENCES medt_branches(id) ON DELETE CASCADE,
     INDEX idx_name_branch (name, branch_id)
 );
 
 -- Meditation sessions table
-CREATE TABLE meditation_sessions (
+CREATE TABLE medt_meditation_sessions (
     id INT PRIMARY KEY AUTO_INCREMENT,
     participant_id INT NOT NULL,
     branch_id INT NOT NULL,
@@ -57,15 +57,15 @@ CREATE TABLE meditation_sessions (
     duration_minutes INT NOT NULL CHECK (duration_minutes IN (30, 60, 90, 120)),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (participant_id) REFERENCES participants(id) ON DELETE CASCADE,
-    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,
-    FOREIGN KEY (volunteer_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (participant_id) REFERENCES medt_participants(id) ON DELETE CASCADE,
+    FOREIGN KEY (branch_id) REFERENCES medt_branches(id) ON DELETE CASCADE,
+    FOREIGN KEY (volunteer_id) REFERENCES medt_users(id) ON DELETE CASCADE,
     INDEX idx_date_branch (session_date, branch_id),
     INDEX idx_participant_date (participant_id, session_date)
 );
 
 -- Insert sample data
-INSERT INTO branches (name, location) VALUES
+INSERT INTO medt_branches (name, location) VALUES
 ('Chennai Central Branch', 'Chennai, Tamil Nadu'),
 ('Coimbatore Branch', 'Coimbatore, Tamil Nadu'),
 ('Madurai Branch', 'Madurai, Tamil Nadu'),
@@ -73,7 +73,7 @@ INSERT INTO branches (name, location) VALUES
 ('Trichy Branch', 'Tiruchirappalli, Tamil Nadu');
 
 -- Insert sample volunteer users (password: 'meditation123' hashed)
-INSERT INTO users (mobile, password, name) VALUES
+INSERT INTO medt_users (mobile, password, name) VALUES
 ('9283181228', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Ramesh Kumar'),
 ('9876543211', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Priya Devi'),
 ('9876543212', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Suresh Babu'),
@@ -81,7 +81,7 @@ INSERT INTO users (mobile, password, name) VALUES
 ('9876543214', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Venkat Raja');
 
 -- Assign volunteers to branches
-INSERT INTO user_branches (user_id, branch_id) VALUES
+INSERT INTO medt_user_branches (user_id, branch_id) VALUES
 (1, 1), (1, 2),  -- Ramesh manages Chennai and Coimbatore
 (2, 2),          -- Priya manages Coimbatore
 (3, 3),          -- Suresh manages Madurai

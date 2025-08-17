@@ -3,11 +3,11 @@
     <div class="w-full max-w-sm">
       <!-- Logo/Header Section -->
       <div class="text-center mb-12">
-        <div class="w-20 h-20 bg-white bg-opacity-20 rounded-3xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm">
-          <span class="text-4xl">🧘‍♂️</span>
+        <div class="w-24 h-24 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg p-4">
+          <img src="/sn-logo.png" alt="SN Logo" class="w-full h-full object-contain">
         </div>
         <h1 class="text-3xl font-bold text-white mb-2">Meditation Tracker</h1>
-        <p class="text-blue-100 text-lg">Track your spiritual journey</p>
+        <p class="text-blue-100 text-lg">BK Branch wise Collective Yoga Tracker </p>
         <div class="w-20 h-1 bg-white bg-opacity-30 rounded-full mx-auto mt-4"></div>
       </div>
 
@@ -84,7 +84,7 @@
         </form>
 
         <!-- Demo Credentials -->
-        <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+        <!-- <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
           <h3 class="text-sm font-medium text-blue-800 mb-2">Demo Credentials</h3>
           <div class="text-xs text-blue-700 space-y-1">
             <p><strong>Mobile:</strong> 9283181228</p>
@@ -96,7 +96,7 @@
           >
             Use demo credentials
           </button>
-        </div>
+        </div> -->
       </div>
     </div>
   </div>
@@ -168,7 +168,7 @@ const handleLogin = async () => {
       
       // Navigate based on branch selection
       if (authStore.hasSelectedBranch) {
-        router.push('/dashboard')
+        router.push('/data-entry')
       } else {
         router.push('/branches')
       }

@@ -1,5 +1,5 @@
 <?php
-require_once 'config.php';
+require_once 'config-mysqli.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     sendResponse(['error' => 'Method not allowed'], 405);
@@ -13,99 +13,136 @@ if (!$branch_id) {
 }
 
 try {
-    // Get total participants this month
-    $stmt = $pdo->prepare("
-        SELECT COUNT(DISTINCT participant_id) as total_participants
-        FROM meditation_sessions 
+    // Get total medt_participants this month
+    $total_medt_participants_result = fetchRow("
+        SELECT COUNT(DISTINCT participant_id) as total_medt_participants
+        FROM medt_meditation_sessions 
         WHERE branch_id = ? AND DATE_FORMAT(session_date, '%Y-%m') = ?
-    ");
-    $stmt->execute([$branch_id, $month]);
-    $total_participants = $stmt->fetchColumn();
+    ", [(int)$branch_id, $month], 'is');
+    
+    $total_medt_participants = (int)($total_medt_participants_result['total_medt_participants'] ?? 0);
 
-    // Get total hours this month
-    $stmt = $pdo->prepare("
+    // Get total hours this month - based on unique time slots
+    $total_minutes_result = fetchRow("
         SELECT SUM(duration_minutes) as total_minutes
-        FROM meditation_sessions 
-        WHERE branch_id = ? AND DATE_FORMAT(session_date, '%Y-%m') = ?
-    ");
-    $stmt->execute([$branch_id, $month]);
-    $total_minutes = $stmt->fetchColumn() ?? 0;
+        FROM (
+            SELECT DISTINCT session_date, start_time, duration_minutes
+            FROM medt_meditation_sessions 
+            WHERE branch_id = ? AND DATE_FORMAT(session_date, '%Y-%m') = ?
+        ) as unique_time_slots
+    ", [(int)$branch_id, $month], 'is');
+    
+    $total_minutes = (int)($total_minutes_result['total_minutes'] ?? 0);
     $total_hours = round($total_minutes / 60, 2);
 
     // Get total sessions this month
-    $stmt = $pdo->prepare("
+    $total_sessions_result = fetchRow("
         SELECT COUNT(*) as total_sessions
-        FROM meditation_sessions 
+        FROM medt_meditation_sessions 
         WHERE branch_id = ? AND DATE_FORMAT(session_date, '%Y-%m') = ?
-    ");
-    $stmt->execute([$branch_id, $month]);
-    $total_sessions = $stmt->fetchColumn();
+    ", [(int)$branch_id, $month], 'is');
+    
+    $total_sessions = (int)($total_sessions_result['total_sessions'] ?? 0);
 
-    // Get daily breakdown for the month
-    $stmt = $pdo->prepare("
+    // Get top medt_participants this month
+    $top_medt_participants = fetchAll("
         SELECT 
-            session_date,
-            COUNT(*) as sessions_count,
-            COUNT(DISTINCT participant_id) as unique_participants,
-            SUM(duration_minutes) as total_minutes
-        FROM meditation_sessions 
-        WHERE branch_id = ? AND DATE_FORMAT(session_date, '%Y-%m') = ?
-        GROUP BY session_date
-        ORDER BY session_date DESC
-    ");
-    $stmt->execute([$branch_id, $month]);
-    $daily_stats = $stmt->fetchAll();
-
-    // Get top participants this month
-    $stmt = $pdo->prepare("
-        SELECT 
-            p.name,
+            ms.participant_id,
+            p.name as participant_name,
             COUNT(*) as session_count,
             SUM(ms.duration_minutes) as total_minutes
-        FROM meditation_sessions ms
-        JOIN participants p ON ms.participant_id = p.id
+        FROM medt_meditation_sessions ms
+        JOIN medt_participants p ON ms.participant_id = p.id
         WHERE ms.branch_id = ? AND DATE_FORMAT(ms.session_date, '%Y-%m') = ?
-        GROUP BY p.id, p.name
+        GROUP BY ms.participant_id, p.name
         ORDER BY session_count DESC, total_minutes DESC
         LIMIT 10
-    ");
-    $stmt->execute([$branch_id, $month]);
-    $top_participants = $stmt->fetchAll();
+    ", [(int)$branch_id, $month], 'is');
 
-    // Get time slot distribution
-    $stmt = $pdo->prepare("
+    // Convert to integers
+    foreach ($top_medt_participants as &$participant) {
+        $participant['participant_id'] = (int)$participant['participant_id'];
+        $participant['session_count'] = (int)$participant['session_count'];
+        $participant['total_minutes'] = (int)$participant['total_minutes'];
+    }
+
+    // Get time distribution (Morning/Afternoon/Evening) - based on unique time slots
+    $time_distribution = fetchAll("
         SELECT 
-            CASE 
-                WHEN HOUR(start_time) < 12 THEN 'Morning'
-                WHEN HOUR(start_time) < 17 THEN 'Afternoon'
-                ELSE 'Evening'
-            END as time_period,
+            period,
             COUNT(*) as session_count,
             SUM(duration_minutes) as total_minutes
-        FROM meditation_sessions 
-        WHERE branch_id = ? AND DATE_FORMAT(session_date, '%Y-%m') = ?
-        GROUP BY time_period
+        FROM (
+            SELECT DISTINCT
+                session_date, start_time, duration_minutes,
+                CASE 
+                    WHEN TIME(start_time) >= '06:00' AND TIME(start_time) < '12:00' THEN 'Morning'
+                    WHEN TIME(start_time) >= '12:00' AND TIME(start_time) < '17:00' THEN 'Afternoon'
+                    WHEN TIME(start_time) >= '17:00' AND TIME(start_time) <= '22:00' THEN 'Evening'
+                    ELSE 'Other'
+                END as period
+            FROM medt_meditation_sessions
+            WHERE branch_id = ? AND DATE_FORMAT(session_date, '%Y-%m') = ?
+        ) as unique_periods
+        WHERE period != 'Other'
+        GROUP BY period
         ORDER BY session_count DESC
-    ");
-    $stmt->execute([$branch_id, $month]);
-    $time_distribution = $stmt->fetchAll();
+    ", [(int)$branch_id, $month], 'is');
 
-    sendResponse([
+    // Convert to integers
+    foreach ($time_distribution as &$dist) {
+        $dist['session_count'] = (int)$dist['session_count'];
+        $dist['total_minutes'] = (int)$dist['total_minutes'];
+    }
+
+    // Get daily breakdown for the month - based on unique time slots per day
+    $daily_stats = fetchAll("
+        SELECT 
+            date,
+            COUNT(*) as sessions_count,
+            total_medt_participants as unique_medt_participants,
+            SUM(duration_minutes) as total_minutes
+        FROM (
+            SELECT DISTINCT
+                session_date as date,
+                start_time,
+                duration_minutes,
+                (SELECT COUNT(DISTINCT participant_id) 
+                 FROM medt_meditation_sessions ms2 
+                 WHERE ms2.session_date = ms1.session_date 
+                   AND ms2.branch_id = ms1.branch_id) as total_medt_participants
+            FROM medt_meditation_sessions ms1
+            WHERE branch_id = ? AND DATE_FORMAT(session_date, '%Y-%m') = ?
+        ) as unique_daily_slots
+        GROUP BY date, total_medt_participants
+        ORDER BY date
+    ", [(int)$branch_id, $month], 'is');
+
+    // Convert to integers
+    foreach ($daily_stats as &$stat) {
+        $stat['sessions_count'] = (int)$stat['sessions_count'];
+        $stat['unique_medt_participants'] = (int)$stat['unique_medt_participants'];
+        $stat['total_minutes'] = (int)$stat['total_minutes'];
+    }
+
+    $response = [
         'success' => true,
         'data' => [
             'summary' => [
-                'total_participants' => (int)$total_participants,
+                'total_medt_participants' => $total_medt_participants,
                 'total_hours' => $total_hours,
-                'total_sessions' => (int)$total_sessions,
-                'month' => $month
+                'total_sessions' => $total_sessions
             ],
-            'daily_stats' => $daily_stats,
-            'top_participants' => $top_participants,
-            'time_distribution' => $time_distribution
+            'top_medt_participants' => $top_medt_participants,
+            'time_distribution' => $time_distribution,
+            'daily_stats' => $daily_stats
         ]
-    ]);
+    ];
 
-} catch (PDOException $e) {
-    sendResponse(['error' => 'Failed to fetch dashboard data'], 500);
+    sendResponse($response);
+
+} catch (Exception $e) {
+    error_log('Dashboard error: ' . $e->getMessage());
+    sendResponse(['success' => false, 'message' => 'Failed to fetch dashboard data'], 500);
 }
 ?>

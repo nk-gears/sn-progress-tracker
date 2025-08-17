@@ -43,9 +43,14 @@ export const useParticipantsStore = defineStore('participants', () => {
     
     isLoading.value = true
     try {
+      console.log('Loading participants for branch:', branchId)
       const response = await apiService.participants.getByBranch(branchId)
+      console.log('API response:', response)
       if (response.success) {
         participants.value = response.participants || []
+        console.log('Loaded participants count:', participants.value.length)
+      } else {
+        console.error('Failed to load participants:', response.message)
       }
     } catch (error) {
       console.error('Error loading participants:', error)
@@ -94,31 +99,21 @@ export const useParticipantsStore = defineStore('participants', () => {
     searchQuery.value = participant.name
   }
   
-  const createParticipant = async (name: string, age?: number, gender?: string): Promise<Participant | null> => {
-    const authStore = useAuthStore()
-    const branchId = authStore.currentBranch?.id
-    
-    if (!branchId) return null
-    
+  const createParticipant = async (participantData: any): Promise<any> => {
     try {
-      const response = await apiService.participants.create({
-        name,
-        age: age || null,
-        gender: gender || null,
-        branch_id: branchId
-      })
+      const response = await apiService.participants.create(participantData)
       
       if (response.success && response.participant) {
         // Add to local participants list
         participants.value.unshift(response.participant)
         selectedParticipant.value = response.participant
-        return response.participant
       }
+      
+      return response
     } catch (error) {
       console.error('Error creating participant:', error)
+      return { success: false, message: 'Failed to create participant' }
     }
-    
-    return null
   }
   
   const updateParticipant = async (id: number, data: Partial<Participant>): Promise<boolean> => {
@@ -166,7 +161,19 @@ export const useParticipantsStore = defineStore('participants', () => {
     }
     
     // Create new participant
-    return await createParticipant(name, age, gender)
+    const authStore = useAuthStore()
+    const branchId = authStore.currentBranch?.id
+    
+    if (!branchId) return null
+    
+    const response = await createParticipant({
+      name,
+      age: age || null,
+      gender: gender || null,
+      branch_id: branchId
+    })
+    
+    return response.success ? response.participant : null
   }
   
   const clearSearch = () => {

@@ -156,6 +156,12 @@ VITE_ENABLE_MOCK_DELAY=false
 - **Optional**: age, gender (can be added later)
 - **Unique Constraint**: name + branch_id combination
 
+### Hour Calculation Business Logic
+- **Total Hours Calculation**: Based on unique time slots, not sum of participant hours
+- **Example**: If 5 people meditate 7:30-8:30 AM, it counts as 1 hour total for the branch
+- **Logic**: `SELECT DISTINCT session_date, start_time, duration_minutes` then sum the durations
+- **Impact**: Dashboard analytics, daily stats, and time distribution all follow this logic
+
 ## 🔄 Key User Workflows
 
 ### 1. Daily Session Recording Workflow

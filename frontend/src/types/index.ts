@@ -33,6 +33,8 @@ export interface Participant {
   gender: 'Male' | 'Female' | 'Other' | null
   branch_id: number
   created_at?: string
+  session_count?: number
+  total_hours?: number
 }
 
 export interface ParticipantForm {
@@ -138,6 +140,11 @@ export interface TimePeriod {
 export interface TimeRange {
   start: string | null
   end: string | null
+}
+
+export interface MultipleTimeRanges {
+  ranges: TimeRange[]
+  totalDuration: number
 }
 
 // API Response Types

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meditation Tracker API Documentation</title>
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.10.3/swagger-ui.css" />
+    <style>
+        html {
+            box-sizing: border-box;
+            overflow: -moz-scrollbars-vertical;
+            overflow-y: scroll;
+        }
+        
+        *, *:before, *:after {
+            box-sizing: inherit;
+        }
+        
+        body {
+            margin:0;
+            background: #fafafa;
+        }
+        
+        .swagger-ui .topbar {
+            background-color: #04349C;
+        }
+        
+        .swagger-ui .topbar .download-url-wrapper {
+            display: none;
+        }
+        
+        .custom-header {
+            background: linear-gradient(135deg, #04349C 0%, #032975 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 0;
+        }
+        
+        .custom-header h1 {
+            margin: 0;
+            font-size: 2em;
+        }
+        
+        .custom-header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="custom-header">
+        <h1>🧘‍♂️ Meditation Tracker API</h1>
+        <p>RESTful API Documentation for NGO Meditation Time Tracking</p>
+    </div>
+    
+    <div id="swagger-ui"></div>
+    
+    <script src="https://unpkg.com/swagger-ui-dist@5.10.3/swagger-ui-bundle.js" charset="UTF-8"></script>
+    <script src="https://unpkg.com/swagger-ui-dist@5.10.3/swagger-ui-standalone-preset.js" charset="UTF-8"></script>
+    
+    <script>
+        window.onload = function() {
+            // Build a system
+            const ui = SwaggerUIBundle({
+                url: './swagger.yaml',
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                plugins: [
+                    SwaggerUIBundle.plugins.DownloadUrl
+                ],
+                layout: "StandaloneLayout",
+                tryItOutEnabled: true,
+                supportedSubmitMethods: ['get', 'post', 'put', 'delete'],
+                requestInterceptor: function(req) {
+                    // Add CORS headers if needed
+                    if (req.url.includes('localhost')) {
+                        req.headers['Access-Control-Allow-Origin'] = '*';
+                    }
+                    return req;
+                },
+                responseInterceptor: function(res) {
+                    return res;
+                },
+                onComplete: function() {
+                    console.log('Swagger UI loaded successfully');
+                },
+                onFailure: function(err) {
+                    console.error('Failed to load Swagger UI:', err);
+                }
+            });
+            
+            window.ui = ui;
+        };
+    </script>
+</body>
+</html>

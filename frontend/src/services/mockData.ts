@@ -11,7 +11,7 @@ export const mockUsers: User[] = [
 
 // Mock Branches
 export const mockBranches: Branch[] = [
-  { id: 1, name: 'Chennai Central Branch', location: 'Chennai, Tamil Nadu' },
+  { id: 1, name: 'Chennai Central Branch2', location: 'Chennai, Tamil Nadu' },
   { id: 2, name: 'Coimbatore Branch', location: 'Coimbatore, Tamil Nadu' },
   { id: 3, name: 'Madurai Branch', location: 'Madurai, Tamil Nadu' },
   { id: 4, name: 'Salem Branch', location: 'Salem, Tamil Nadu' },

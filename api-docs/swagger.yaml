@@ -1,0 +1,1004 @@
+openapi: 3.0.3
+info:
+  title: Meditation Time Tracker API
+  description: |
+    RESTful API for the Meditation Time Tracker application used by NGO branches across Tamil Nadu.
+    
+    ## Overview
+    This API manages meditation sessions for participants across multiple branches, allowing volunteers to:
+    - Track meditation sessions with specific time ranges
+    - Manage participants and their details
+    - Generate analytics and reports
+    
+    ## Authentication
+    Currently uses simple token-based authentication. In production, implement proper JWT or OAuth2.
+    
+    ## Duration Constraints
+    All meditation sessions must have durations of exactly **30, 60, 90, or 120 minutes**.
+    
+    ## Multiple Time Ranges
+    The frontend supports multiple time ranges for the same participant on the same date, 
+    which creates multiple individual session records via separate API calls.
+    
+    ## Base URL
+    - Development: `http://localhost/meditation-tracker/backend/`
+    - Production: `https://your-domain.com/api/`
+    
+  version: 1.0.0
+  contact:
+    name: Meditation Tracker Support
+    email: support@meditation-tracker.org
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost/meditation-tracker/backend
+    description: Local development server
+  - url: https://your-domain.com/api
+    description: Production server
+
+# Security schemes
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Use the token returned from the login endpoint
+      
+  schemas:
+    # Common response schemas
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Operation completed successfully"
+          
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Error description"
+        message:
+          type: string
+          example: "Detailed error message"
+          
+    # User and Authentication
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Ramesh Kumar"
+        mobile:
+          type: string
+          example: "9283181228"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+          
+    Branch:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Chennai Central Branch"
+        location:
+          type: string
+          example: "Chennai, Tamil Nadu"
+        created_at:
+          type: string
+          format: date-time
+          
+    LoginRequest:
+      type: object
+      required:
+        - mobile
+        - password
+      properties:
+        mobile:
+          type: string
+          pattern: '^[0-9]{10}$'
+          example: "9283181228"
+          description: 10-digit mobile number
+        password:
+          type: string
+          minLength: 6
+          example: "meditation123"
+          
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        user:
+          $ref: '#/components/schemas/User'
+        branches:
+          type: array
+          items:
+            $ref: '#/components/schemas/Branch'
+        token:
+          type: string
+          example: "auth_token_1_1640995200"
+          description: Simple authentication token
+          
+    # Participant schemas
+    Participant:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        name:
+          type: string
+          example: "Lakshmi Devi"
+        age:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 120
+          example: 45
+        gender:
+          type: string
+          nullable: true
+          enum: ["Male", "Female", "Other"]
+          example: "Female"
+        branch_id:
+          type: integer
+          example: 1
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+          
+    ParticipantRequest:
+      type: object
+      required:
+        - name
+        - branch_id
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "Lakshmi Devi"
+        age:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 120
+          example: 45
+        gender:
+          type: string
+          nullable: true
+          enum: ["Male", "Female", "Other"]
+          example: "Female"
+        branch_id:
+          type: integer
+          example: 1
+          
+    ParticipantResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        participant:
+          $ref: '#/components/schemas/Participant'
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+        message:
+          type: string
+          
+    # Session schemas
+    MeditationSession:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 501
+        participant_id:
+          type: integer
+          example: 101
+        participant_name:
+          type: string
+          example: "Lakshmi Devi"
+        branch_id:
+          type: integer
+          example: 1
+        volunteer_id:
+          type: integer
+          example: 1
+        session_date:
+          type: string
+          format: date
+          example: "2024-08-10"
+        start_time:
+          type: string
+          format: time
+          example: "07:00"
+          description: "24-hour format HH:MM"
+        duration_minutes:
+          type: integer
+          enum: [30, 60, 90, 120]
+          example: 60
+          description: "Must be exactly 30, 60, 90, or 120 minutes"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+          
+    SessionCreateRequest:
+      type: object
+      required:
+        - participant_id
+        - branch_id
+        - volunteer_id
+        - session_date
+        - start_time
+        - duration_minutes
+      properties:
+        participant_id:
+          type: integer
+          example: 101
+        branch_id:
+          type: integer
+          example: 1
+        volunteer_id:
+          type: integer
+          example: 1
+        session_date:
+          type: string
+          format: date
+          example: "2024-08-10"
+        start_time:
+          type: string
+          format: time
+          pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+          example: "07:00"
+        duration_minutes:
+          type: integer
+          enum: [30, 60, 90, 120]
+          example: 60
+          
+    SessionUpdateRequest:
+      type: object
+      properties:
+        participant_id:
+          type: integer
+          example: 101
+        session_date:
+          type: string
+          format: date
+          example: "2024-08-10"
+        start_time:
+          type: string
+          format: time
+          example: "07:30"
+        duration_minutes:
+          type: integer
+          enum: [30, 60, 90, 120]
+          example: 90
+          
+    SessionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        session:
+          $ref: '#/components/schemas/MeditationSession'
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeditationSession'
+        message:
+          type: string
+          
+    # Dashboard schemas
+    DashboardSummary:
+      type: object
+      properties:
+        total_participants:
+          type: integer
+          example: 45
+          description: "Unique participants this month"
+        total_hours:
+          type: number
+          format: float
+          example: 127.5
+          description: "Total meditation hours this month"
+        total_sessions:
+          type: integer
+          example: 89
+          description: "Total sessions this month"
+          
+    TopParticipant:
+      type: object
+      properties:
+        participant_id:
+          type: integer
+          example: 101
+        participant_name:
+          type: string
+          example: "Lakshmi Devi"
+        session_count:
+          type: integer
+          example: 12
+        total_minutes:
+          type: integer
+          example: 720
+          
+    TimeDistribution:
+      type: object
+      properties:
+        period:
+          type: string
+          enum: ["Morning", "Afternoon", "Evening"]
+          example: "Morning"
+        session_count:
+          type: integer
+          example: 35
+        total_minutes:
+          type: integer
+          example: 1980
+          
+    DailyStats:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2024-08-10"
+        sessions_count:
+          type: integer
+          example: 8
+        unique_participants:
+          type: integer
+          example: 6
+        total_minutes:
+          type: integer
+          example: 420
+          
+    DashboardResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            summary:
+              $ref: '#/components/schemas/DashboardSummary'
+            top_participants:
+              type: array
+              items:
+                $ref: '#/components/schemas/TopParticipant'
+            time_distribution:
+              type: array
+              items:
+                $ref: '#/components/schemas/TimeDistribution'
+            daily_stats:
+              type: array
+              items:
+                $ref: '#/components/schemas/DailyStats'
+
+# API Paths
+paths:
+  # Authentication endpoints
+  /auth.php:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: |
+        Authenticate a volunteer with mobile number and password.
+        Returns user details, accessible branches, and authentication token.
+        
+        **Demo Credentials:**
+        - Mobile: `9283181228`
+        - Password: `meditation123`
+        
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              demo_login:
+                summary: Demo credentials
+                value:
+                  mobile: "9283181228"
+                  password: "meditation123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              examples:
+                success:
+                  summary: Successful login
+                  value:
+                    success: true
+                    user:
+                      id: 1
+                      name: "Ramesh Kumar"
+                      mobile: "9283181228"
+                    branches:
+                      - id: 1
+                        name: "Chennai Central Branch"
+                        location: "Chennai, Tamil Nadu"
+                      - id: 2
+                        name: "Coimbatore Branch" 
+                        location: "Coimbatore, Tamil Nadu"
+                    token: "auth_token_1_1640995200"
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_credentials:
+                  summary: Wrong mobile/password
+                  value:
+                    success: false
+                    error: "Invalid credentials"
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed (only POST supported)
+          
+  # Participant endpoints
+  /participants.php:
+    get:
+      tags:
+        - Participants
+      summary: Get participants by branch
+      description: |
+        Retrieve participants for a specific branch with optional search functionality.
+        
+        **Query Parameters:**
+        - `action=list`: Get all participants (default)
+        - `action=search`: Get participants with search filtering for autocomplete
+        
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: branch_id
+          in: query
+          required: true
+          schema:
+            type: integer
+          example: 1
+          description: ID of the branch
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "Lakshmi"
+          description: Search term to filter participants by name
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["list", "search"]
+            default: "list"
+          description: Type of operation (list all or search)
+      responses:
+        '200':
+          description: Participants retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantResponse'
+              examples:
+                list_participants:
+                  summary: List of participants
+                  value:
+                    success: true
+                    participants:
+                      - id: 101
+                        name: "Lakshmi Devi"
+                        age: 45
+                        gender: "Female"
+                        branch_id: 1
+                        created_at: "2024-08-01T10:00:00Z"
+                      - id: 102
+                        name: "Ravi Kumar"
+                        age: 38
+                        gender: "Male"
+                        branch_id: 1
+                        created_at: "2024-08-02T14:30:00Z"
+        '400':
+          description: Missing branch_id parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Participants
+      summary: Create new participant
+      description: |
+        Create a new participant in the specified branch.
+        The `name` and `branch_id` are required. Age and gender are optional.
+        
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParticipantRequest'
+            examples:
+              new_participant:
+                summary: Create new participant
+                value:
+                  name: "Priya Sharma"
+                  age: 32
+                  gender: "Female"
+                  branch_id: 1
+              minimal_participant:
+                summary: Participant with minimal data
+                value:
+                  name: "Anonymous"
+                  branch_id: 1
+      responses:
+        '200':
+          description: Participant created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantResponse'
+              examples:
+                created:
+                  summary: Successfully created
+                  value:
+                    success: true
+                    participant:
+                      id: 103
+                      name: "Priya Sharma"
+                      age: 32
+                      gender: "Female"
+                      branch_id: 1
+                      created_at: "2024-08-10T15:45:00Z"
+                    message: "Participant created successfully"
+        '400':
+          description: Missing required fields or invalid data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Participants  
+      summary: Update participant
+      description: Update an existing participant's information
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required:
+                    - id
+                  properties:
+                    id:
+                      type: integer
+                      example: 101
+                - $ref: '#/components/schemas/ParticipantRequest'
+      responses:
+        '200':
+          description: Participant updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Missing ID or invalid data
+        '404':
+          description: Participant not found
+
+  # Session endpoints
+  /sessions.php:
+    get:
+      tags:
+        - Sessions
+      summary: Get sessions by date and branch
+      description: |
+        Retrieve all meditation sessions for a specific branch and date.
+        Results are ordered by start time (newest first).
+        
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: branch_id
+          in: query
+          required: true
+          schema:
+            type: integer
+          example: 1
+          description: ID of the branch
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          example: "2024-08-10"
+          description: Date to fetch sessions for (defaults to today)
+      responses:
+        '200':
+          description: Sessions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+              examples:
+                daily_sessions:
+                  summary: Sessions for a specific date
+                  value:
+                    success: true
+                    sessions:
+                      - id: 501
+                        participant_id: 101
+                        participant_name: "Lakshmi Devi"
+                        branch_id: 1
+                        volunteer_id: 1
+                        session_date: "2024-08-10"
+                        start_time: "07:00"
+                        duration_minutes: 60
+                        created_at: "2024-08-10T07:15:00Z"
+                      - id: 502
+                        participant_id: 102
+                        participant_name: "Ravi Kumar"  
+                        branch_id: 1
+                        volunteer_id: 1
+                        session_date: "2024-08-10"
+                        start_time: "07:30"
+                        duration_minutes: 30
+                        created_at: "2024-08-10T07:45:00Z"
+        '400':
+          description: Missing branch_id parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Sessions
+      summary: Create new meditation session
+      description: |
+        Create a new meditation session for a participant.
+        
+        **Important Notes:**
+        - Duration must be exactly 30, 60, 90, or 120 minutes
+        - Participant must exist in the specified branch
+        - Time format should be HH:MM (24-hour format)
+        - For multiple time ranges, make separate API calls for each range
+        
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionCreateRequest'
+            examples:
+              morning_session:
+                summary: Morning meditation session
+                value:
+                  participant_id: 101
+                  branch_id: 1
+                  volunteer_id: 1
+                  session_date: "2024-08-10"
+                  start_time: "07:00"
+                  duration_minutes: 60
+              multiple_range_1:
+                summary: First of multiple ranges
+                value:
+                  participant_id: 101
+                  branch_id: 1
+                  volunteer_id: 1
+                  session_date: "2024-08-10"
+                  start_time: "07:00"
+                  duration_minutes: 30
+              multiple_range_2:
+                summary: Second of multiple ranges  
+                value:
+                  participant_id: 101
+                  branch_id: 1
+                  volunteer_id: 1
+                  session_date: "2024-08-10"
+                  start_time: "10:00"
+                  duration_minutes: 30
+      responses:
+        '200':
+          description: Session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+              examples:
+                created:
+                  summary: Successfully created session
+                  value:
+                    success: true
+                    session:
+                      id: 503
+                      participant_id: 101
+                      participant_name: "Lakshmi Devi"
+                      branch_id: 1
+                      volunteer_id: 1
+                      session_date: "2024-08-10"
+                      start_time: "07:00"
+                      duration_minutes: 60
+                      created_at: "2024-08-10T07:15:00Z"
+                    message: "Session recorded successfully"
+        '400':
+          description: Invalid data or missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_duration:
+                  summary: Invalid duration value
+                  value:
+                    success: false
+                    message: "Duration must be 30, 60, 90, or 120 minutes"
+                participant_not_found:
+                  summary: Participant doesn't exist
+                  value:
+                    success: false
+                    message: "Participant not found"
+
+    put:
+      tags:
+        - Sessions
+      summary: Update meditation session
+      description: |
+        Update an existing meditation session.
+        Session ID can be provided in the URL path or in the request body.
+        Only provided fields will be updated.
+        
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: false
+          schema:
+            type: integer
+          example: 501
+          description: Session ID (alternative to body field)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 501
+                      description: Session ID (if not in URL path)
+                - $ref: '#/components/schemas/SessionUpdateRequest'
+            examples:
+              update_time:
+                summary: Update session time
+                value:
+                  id: 501
+                  start_time: "07:30"
+                  duration_minutes: 90
+              update_date:
+                summary: Update session date
+                value:
+                  id: 501
+                  session_date: "2024-08-11"
+      responses:
+        '200':
+          description: Session updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Missing session ID or invalid data
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                not_found:
+                  summary: Session not found
+                  value:
+                    success: false
+                    message: "Session not found or no changes made"
+
+    delete:
+      tags:
+        - Sessions
+      summary: Delete meditation session
+      description: |
+        Delete a meditation session by ID.
+        Session ID can be provided in the URL path or as a query parameter.
+        
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: false
+          schema:
+            type: integer
+          example: 501
+        - name: id
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 501
+          description: Session ID (if not in URL path)
+      responses:
+        '200':
+          description: Session deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                deleted:
+                  summary: Successfully deleted
+                  value:
+                    success: true
+                    message: "Session deleted successfully"
+        '400':
+          description: Missing session ID
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Dashboard endpoints
+  /dashboard.php:
+    get:
+      tags:
+        - Dashboard
+      summary: Get dashboard analytics
+      description: |
+        Retrieve comprehensive analytics for a branch including:
+        - Monthly summary statistics
+        - Top participants by session count
+        - Time distribution (Morning/Afternoon/Evening)
+        - Daily statistics for the month
+        
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: branch_id
+          in: query
+          required: true
+          schema:
+            type: integer
+          example: 1
+          description: ID of the branch
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}$'
+          example: "2024-08"
+          description: Month in YYYY-MM format (defaults to current month)
+      responses:
+        '200':
+          description: Dashboard data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+              examples:
+                monthly_stats:
+                  summary: Monthly dashboard data
+                  value:
+                    success: true
+                    data:
+                      summary:
+                        total_participants: 45
+                        total_hours: 127.5
+                        total_sessions: 89
+                      top_participants:
+                        - participant_id: 101
+                          participant_name: "Lakshmi Devi"
+                          session_count: 12
+                          total_minutes: 720
+                        - participant_id: 102
+                          participant_name: "Ravi Kumar"
+                          session_count: 10
+                          total_minutes: 600
+                      time_distribution:
+                        - period: "Morning"
+                          session_count: 45
+                          total_minutes: 2400
+                        - period: "Afternoon" 
+                          session_count: 25
+                          total_minutes: 1350
+                        - period: "Evening"
+                          session_count: 19
+                          total_minutes: 1080
+                      daily_stats:
+                        - date: "2024-08-01"
+                          sessions_count: 8
+                          unique_participants: 6
+                          total_minutes: 420
+                        - date: "2024-08-02"
+                          sessions_count: 5
+                          unique_participants: 4
+                          total_minutes: 270
+        '400':
+          description: Missing branch_id parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed (only GET supported)
+
+# Tags for grouping endpoints
+tags:
+  - name: Authentication
+    description: User login and authentication
+  - name: Participants
+    description: Manage meditation participants
+  - name: Sessions
+    description: Manage meditation sessions and time tracking
+  - name: Dashboard
+    description: Analytics and reporting
+
+# Global security requirement
+security:
+  - BearerAuth: []

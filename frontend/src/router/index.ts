@@ -70,7 +70,7 @@ const routes: RouteRecordRaw[] = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory('/sn-progress/'),
   routes,
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {
@@ -110,7 +110,7 @@ router.beforeEach(async (to, from, next) => {
   // Redirect authenticated users away from login
   if (to.name === 'Login' && authStore.isLoggedIn) {
     if (authStore.hasSelectedBranch) {
-      next('/dashboard')
+      next('/data-entry')
     } else {
       next('/branches')
     }
@@ -119,7 +119,7 @@ router.beforeEach(async (to, from, next) => {
   
   // Redirect users with branch selection away from branch selection
   if (to.name === 'BranchSelection' && authStore.hasSelectedBranch) {
-    next('/dashboard')
+    next('/data-entry')
     return
   }
   

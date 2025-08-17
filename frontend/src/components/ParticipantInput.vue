@@ -46,9 +46,9 @@
           >
             <div class="font-medium">{{ participant.name }}</div>
             <div v-if="participant.age || participant.gender" class="text-sm text-gray-500">
-              <span v-if="participant.age">{{ participant.age }} years</span>
-              <span v-if="participant.age && participant.gender"> • </span>
-              <span v-if="participant.gender">{{ participant.gender }}</span>
+              <span v-if="participant.age"> {{ participant.age }} years</span>
+              <!-- <span v-if="participant.age && participant.gender"> • </span>
+              <span v-if="participant.gender">{{ participant.gender }}</span> -->
             </div>
           </button>
         </div>
@@ -158,7 +158,7 @@ const selectedParticipant = computed(() => participantsStore.selectedParticipant
 const isNewParticipant = computed(() => participantsStore.isNewParticipant)
 
 const showAgeGenderFields = computed(() => {
-  return localParticipantName.value.length > 1 && (isNewParticipant.value || selectedParticipant.value)
+  return localParticipantName.value.length > 1 && isNewParticipant.value
 })
 
 // Methods

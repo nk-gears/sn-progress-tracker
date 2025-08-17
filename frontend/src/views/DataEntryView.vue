@@ -14,16 +14,7 @@
             </div>
           </div>
           
-          <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-              <span class="text-xl">🎯</span>
-            </div>
-            <div class="text-right">
-              <p class="text-sm text-gray-600">Hours to Catchup</p>
-              <p class="text-xl font-bold text-orange-600">{{ catchupHours }} Hours</p>
-              <p class="text-xs text-gray-500">in next {{ daysRemaining }} days</p>
-            </div>
-          </div>
+         
         </div>
       </div>
       
@@ -79,7 +70,7 @@
 
           <!-- Time Slot Selector Component -->
           <TimeSlotSelector
-            v-model="selectedTimeRange"
+            v-model="selectedTimeRanges"
             @duration-changed="handleDurationChanged"
           />
 
@@ -124,10 +115,15 @@
 
       <!-- Sessions for Selected Date -->
       <div v-if="dateSessionsList.length > 0" class="card p-4 mt-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-3 flex items-center">
-          <span class="mr-2">📋</span>
-          Sessions for {{ formatSelectedDate }}
-          <span class="ml-2 text-sm font-normal text-gray-600">({{ dateSessionsList.length }})</span>
+        <h3 class="text-lg font-semibold text-gray-800 mb-3 flex items-center justify-between">
+          <div class="flex items-center">
+            <span class="mr-2">📋</span>
+            Sessions for {{ formatSelectedDate }}
+            <span class="ml-2 text-sm font-normal text-gray-600">({{ dateSessionsList.length }})</span>
+          </div>
+          <div class="text-sm font-medium text-primary bg-blue-50 px-3 py-1 rounded-full">
+            {{ totalSessionHours }}h total
+          </div>
         </h3>
         
         <div class="space-y-2">
@@ -206,10 +202,10 @@ const dateSessionsList = ref<Session[]>([])
 
 // Computed properties
 const sessionForm = computed(() => sessionsStore.sessionForm)
-const selectedTimeRange = computed({
-  get: () => sessionsStore.selectedTimeRange,
+const selectedTimeRanges = computed({
+  get: () => sessionsStore.selectedTimeRanges,
   set: (value) => {
-    sessionsStore.selectedTimeRange = value
+    sessionsStore.selectedTimeRanges = value
   }
 })
 const editingSession = computed(() => sessionsStore.editingSession)
@@ -245,13 +241,31 @@ const formatSelectedDate = computed(() => {
   })
 })
 
+const totalSessionHours = computed(() => {
+  // Group sessions by unique time slots (start_time + duration)
+  const uniqueTimeSlots = new Map<string, number>()
+  
+  dateSessionsList.value.forEach(session => {
+    const timeSlotKey = `${session.start_time}-${session.duration_minutes}`
+    if (!uniqueTimeSlots.has(timeSlotKey)) {
+      uniqueTimeSlots.set(timeSlotKey, session.duration_minutes)
+    }
+  })
+  
+  // Sum only the unique time slot durations
+  const totalMinutes = Array.from(uniqueTimeSlots.values()).reduce((total, minutes) => {
+    return total + minutes
+  }, 0)
+  
+  return (totalMinutes / 60).toFixed(1)
+})
+
 const isFormValid = computed(() => {
   return (
     sessionForm.value.participant_name.trim().length > 0 &&
-    selectedTimeRange.value.start &&
-    selectedTimeRange.value.end &&
-    currentDuration.value >= 30 &&
-    [30, 60, 90, 120].includes(currentDuration.value)
+    selectedTimeRanges.value.ranges.length > 0 &&
+    selectedTimeRanges.value.totalDuration >= 30 &&
+    [30, 60, 90, 120].includes(selectedTimeRanges.value.totalDuration)
   )
 })
 
@@ -318,13 +332,13 @@ const handleSubmit = async () => {
   error.value = ''
   success.value = ''
   
-  if (!selectedTimeRange.value.start || currentDuration.value < 30) {
-    error.value = 'Please select a valid time range (minimum 30 minutes)'
+  if (selectedTimeRanges.value.ranges.length === 0 || selectedTimeRanges.value.totalDuration < 30) {
+    error.value = 'Please select valid time ranges (minimum 30 minutes total)'
     return
   }
   
-  if (![30, 60, 90, 120].includes(currentDuration.value)) {
-    error.value = 'Duration must be exactly 30, 60, 90, or 120 minutes'
+  if (![30, 60, 90, 120].includes(selectedTimeRanges.value.totalDuration)) {
+    error.value = 'Total duration must be exactly 30, 60, 90, or 120 minutes'
     return
   }
   
@@ -352,20 +366,30 @@ const handleSubmit = async () => {
       return
     }
     
-    const sessionData = {
-      participant_id: participant.id,
-      participant_name: participant.name,
-      branch_id: branchId,
-      volunteer_id: userId,
-      session_date: sessionForm.value.session_date,
-      start_time: selectedTimeRange.value.start!,
-      duration_minutes: currentDuration.value
-    }
-    
     let success_msg = ''
     
     if (editingSession.value) {
-      // Update existing session
+      // For editing, we only support single range sessions for now
+      const firstRange = selectedTimeRanges.value.ranges[0]
+      if (!firstRange || !firstRange.start || !firstRange.end) {
+        error.value = 'Invalid time range selected'
+        return
+      }
+      
+      const startMinutes = sessionsStore.timeToMinutes(firstRange.start)
+      const endMinutes = sessionsStore.timeToMinutes(firstRange.end)
+      const duration = endMinutes - startMinutes
+      
+      const sessionData = {
+        participant_id: participant.id,
+        participant_name: participant.name,
+        branch_id: branchId,
+        volunteer_id: userId,
+        session_date: sessionForm.value.session_date,
+        start_time: firstRange.start,
+        duration_minutes: duration
+      }
+      
       const updateSuccess = await sessionsStore.updateSession(editingSession.value.id, sessionData)
       
       if (updateSuccess) {
@@ -376,19 +400,33 @@ const handleSubmit = async () => {
         return
       }
     } else {
-      // Create new session
-      const createSuccess = await sessionsStore.createSession(sessionData)
+      // Create multiple sessions for multiple ranges
+      let allSuccess = true
+      const createdSessions: Session[] = []
       
-      if (createSuccess) {
-        success_msg = 'Session recorded successfully!'
-        sessionsStore.clearForm()
-        participantsStore.clearSearch()
+      for (const range of selectedTimeRanges.value.ranges) {
+        if (!range.start || !range.end) continue
         
-        // Add new session to local list if it's for the same date
-        if (sessionData.session_date === sessionForm.value.session_date) {
+        const startMinutes = sessionsStore.timeToMinutes(range.start)
+        const endMinutes = sessionsStore.timeToMinutes(range.end)
+        const duration = endMinutes - startMinutes
+        
+        const sessionData = {
+          participant_id: participant.id,
+          participant_name: participant.name,
+          branch_id: branchId,
+          volunteer_id: userId,
+          session_date: sessionForm.value.session_date,
+          start_time: range.start,
+          duration_minutes: duration
+        }
+        
+        const createSuccess = await sessionsStore.createSession(sessionData)
+        
+        if (createSuccess) {
           // Create a mock session object for immediate display
           const newSession: Session = {
-            id: Date.now(), // Temporary ID
+            id: Date.now() + Math.random(), // Temporary unique ID
             participant_id: sessionData.participant_id,
             participant_name: sessionData.participant_name,
             branch_id: sessionData.branch_id,
@@ -399,10 +437,23 @@ const handleSubmit = async () => {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }
-          dateSessionsList.value.unshift(newSession)
+          createdSessions.push(newSession)
+        } else {
+          allSuccess = false
+          break
         }
+      }
+      
+      if (allSuccess) {
+        const rangeCount = selectedTimeRanges.value.ranges.length
+        success_msg = `${rangeCount > 1 ? rangeCount + ' sessions' : 'Session'} recorded successfully!`
+        sessionsStore.clearForm()
+        participantsStore.clearSearch()
+        
+        // Add new sessions to local list
+        dateSessionsList.value.unshift(...createdSessions)
       } else {
-        error.value = 'Failed to record session'
+        error.value = 'Failed to record some sessions'
         return
       }
     }
@@ -464,11 +515,7 @@ onMounted(async () => {
     }
   }
   
-  // Set initial duration
-  if (selectedTimeRange.value.start && selectedTimeRange.value.end) {
-    const start = sessionsStore.timeToMinutes(selectedTimeRange.value.start)
-    const end = sessionsStore.timeToMinutes(selectedTimeRange.value.end)
-    currentDuration.value = end - start
-  }
+  // Set initial duration from ranges
+  currentDuration.value = selectedTimeRanges.value.totalDuration
 })
 </script>
