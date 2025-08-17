@@ -98,6 +98,22 @@
           </button>
         </div> -->
       </div>
+
+      <!-- Footer -->
+      <div class="mt-8 text-center text-xs text-white text-opacity-80 space-y-1">
+        <p>&copy; {{ currentYear }} All rights reserved</p>
+        <p>Designed and Developed by</p>
+        <p>
+          <a 
+            href="https://tamil.brahmakumaris.com" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            class="text-white hover:text-blue-200 underline transition-colors"
+          >
+            Brahma Kumaris, Chennai
+          </a>
+        </p>
+      </div>
     </div>
   </div>
 </template>
@@ -134,6 +150,8 @@ const isFormValid = computed(() => {
          !errors.value.mobile &&
          !errors.value.password
 })
+
+const currentYear = computed(() => new Date().getFullYear())
 
 // Methods
 const validateForm = () => {

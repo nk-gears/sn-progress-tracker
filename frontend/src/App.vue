@@ -49,6 +49,9 @@
         <component :is="Component" />
       </Transition>
     </RouterView>
+
+    <!-- PWA Install Prompt -->
+    <PWAInstallPrompt />
   </div>
 </template>
 
@@ -56,6 +59,7 @@
 import { computed } from 'vue'
 import { RouterView } from 'vue-router'
 import { useAppStore } from '@/stores/app'
+import PWAInstallPrompt from '@/components/PWAInstallPrompt.vue'
 
 const appStore = useAppStore()
 

@@ -1,0 +1,38 @@
+{
+  "name": "Meditation Time Tracker",
+  "short_name": "Meditation Tracker",
+  "description": "Track meditation sessions for NGO branches across Tamil Nadu",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#04349C",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["health", "lifestyle", "productivity"],
+  "icons": [
+    {
+      "src": "/sn-logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/sn-logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/sn-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/sn-logo.png",
+      "sizes": "540x720",
+      "type": "image/png"
+    }
+  ]
+}
