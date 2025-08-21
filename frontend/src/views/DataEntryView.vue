@@ -21,28 +21,8 @@
       <div class="card p-6">
         <h2 class="text-xl font-bold text-primary mb-6 flex items-center">
           <span class="mr-2">📝</span>
-          <span v-if="editingSession">Edit Session</span>
-          <span v-else>Record Session</span>
+          <span>Record Session</span>
         </h2>
-        
-        <!-- Edit mode indicator -->
-        <div v-if="editingSession" class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-          <div class="flex items-center text-blue-800">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-            </svg>
-            <span class="font-medium flex items-center">
-              Editing session from 
-              <span class="ml-1 flex flex-col text-center">
-                <span class="font-semibold">{{ getTimeOnly(editingSession.start_time) }}</span>
-                <span class="text-xs">{{ getAmPm(editingSession.start_time) }}</span>
-              </span>
-            </span>
-          </div>
-          <button @click="cancelEdit" class="mt-2 text-sm text-blue-600 hover:text-blue-800">
-            Cancel and create new session instead
-          </button>
-        </div>
 
         <form @submit.prevent="handleSubmit" class="space-y-4">
 
@@ -68,11 +48,30 @@
             @participant-selected="handleParticipantSelected"
           />
 
-          <!-- Time Slot Selector Component -->
-          <TimeSlotSelector
-            v-model="selectedTimeRanges"
-            @duration-changed="handleDurationChanged"
-          />
+          <!-- Time Slot Selector Component - Only show when participant is selected -->
+          <div v-if="selectedParticipant">
+            <!-- Last session info message -->
+            <div v-if="lastSessionInfo" class="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
+              {{ lastSessionInfo }}
+              <span class="block text-xs text-green-600 mt-1">You can adjust the time if needed</span>
+            </div>
+            
+            <TimeSlotSelector
+              v-model="selectedTimeRanges"
+              @duration-changed="handleDurationChanged"
+            />
+          </div>
+
+          <!-- Message when no participant is selected -->
+          <div v-if="!selectedParticipant" class="p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-center">
+            <div class="flex items-center justify-center mb-2">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span class="font-medium">Please select or enter a participant first</span>
+            </div>
+            <p class="text-sm text-blue-600">Start typing a name above to search for existing participants or add a new one</p>
+          </div>
 
           <!-- Error Display -->
           <div v-if="error" class="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
@@ -84,32 +83,18 @@
             {{ success }}
           </div>
 
-          <!-- Submit Buttons -->
-          <div class="flex space-x-3">
-            <button
-              v-if="editingSession"
-              @click="cancelEdit"
-              type="button"
-              class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-4 px-4 rounded-xl font-medium text-lg touch-target transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              :disabled="isLoading || !isFormValid"
-              class="flex-1 btn-primary"
-            >
-              <span v-if="isLoading" class="flex items-center justify-center">
-                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                <span v-if="editingSession">Updating...</span>
-                <span v-else>Recording...</span>
-              </span>
-              <span v-else>
-                <span v-if="editingSession">Update Session</span>
-                <span v-else>Record Session</span>
-              </span>
-            </button>
-          </div>
+          <!-- Submit Button -->
+          <button
+            type="submit"
+            :disabled="isLoading || !isFormValid"
+            class="w-full btn-primary"
+          >
+            <span v-if="isLoading" class="flex items-center justify-center">
+              <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+              Recording...
+            </span>
+            <span v-else>Record Session</span>
+          </button>
         </form>
       </div>
 
@@ -147,15 +132,6 @@
               <div class="text-xs text-gray-500">
                 {{ new Date(session.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) }}
               </div>
-              <button
-                @click="editSession(session)"
-                class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                title="Edit session"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                </svg>
-              </button>
               <button
                 @click="deleteSession(session)"
                 class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -199,6 +175,7 @@ const success = ref('')
 const selectedParticipant = ref<Participant | null>(null)
 const currentDuration = ref(0)
 const dateSessionsList = ref<Session[]>([])
+const lastSessionInfo = ref<string>('')
 
 // Computed properties
 const sessionForm = computed(() => sessionsStore.sessionForm)
@@ -208,7 +185,6 @@ const selectedTimeRanges = computed({
     sessionsStore.selectedTimeRanges = value
   }
 })
-const editingSession = computed(() => sessionsStore.editingSession)
 const today = computed(() => new Date().toISOString().slice(0, 10))
 
 // Metrics computed properties
@@ -296,11 +272,6 @@ const loadSessionsForDate = async (date: string) => {
   }
 }
 
-const editSession = (session: Session) => {
-  sessionsStore.startEdit(session)
-  // Scroll to top to show edit form
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-}
 
 const deleteSession = async (session: Session) => {
   if (!confirm(`Delete session for ${session.participant_name}?`)) return
@@ -320,8 +291,58 @@ const deleteSession = async (session: Session) => {
   }
 }
 
-const handleParticipantSelected = (participant: Participant | null) => {
+const handleParticipantSelected = async (participant: Participant | null) => {
   selectedParticipant.value = participant
+  
+  // Clear time selection when participant is cleared
+  if (!participant) {
+    selectedTimeRanges.value = { ranges: [], totalDuration: 0 }
+    lastSessionInfo.value = ''
+    return
+  }
+  
+  // Fetch last session for this participant and pre-populate time
+  const branchId = authStore.currentBranch?.id
+  if (branchId && participant.id) {
+    try {
+      const response = await apiService.participants.getLastSession(participant.id, branchId)
+      if (response.success && response.last_session) {
+        const lastSession = response.last_session
+        // Pre-populate the time selection with the last session time
+        const startTime = lastSession.start_time
+        const duration = lastSession.duration_minutes
+        
+        // Calculate end time
+        const startMinutes = sessionsStore.timeToMinutes(startTime)
+        const endMinutes = startMinutes + duration
+        const endTime = sessionsStore.minutesToTime(endMinutes)
+        
+        // Set the time range
+        selectedTimeRanges.value = {
+          ranges: [{
+            start: startTime,
+            end: endTime
+          }],
+          totalDuration: duration
+        }
+        
+        // Show user-friendly message
+        const timeFormatted = formatTime(startTime)
+        lastSessionInfo.value = `⏱️ Pre-filled with last session time: ${timeFormatted} (${duration}min)`
+        
+        console.log(`Pre-populated time from last session: ${startTime} for ${duration} minutes`)
+      } else {
+        // No previous session, clear selection
+        selectedTimeRanges.value = { ranges: [], totalDuration: 0 }
+        lastSessionInfo.value = ''
+      }
+    } catch (error) {
+      console.error('Error fetching last session:', error)
+      // Clear selection on error
+      selectedTimeRanges.value = { ranges: [], totalDuration: 0 }
+      lastSessionInfo.value = ''
+    }
+  }
 }
 
 const handleDurationChanged = (duration: number) => {
@@ -366,18 +387,15 @@ const handleSubmit = async () => {
       return
     }
     
-    let success_msg = ''
+    // Create multiple sessions for multiple ranges
+    const createdSessions: Session[] = []
+    const skippedSessions: string[] = []
     
-    if (editingSession.value) {
-      // For editing, we only support single range sessions for now
-      const firstRange = selectedTimeRanges.value.ranges[0]
-      if (!firstRange || !firstRange.start || !firstRange.end) {
-        error.value = 'Invalid time range selected'
-        return
-      }
+    for (const range of selectedTimeRanges.value.ranges) {
+      if (!range.start || !range.end) continue
       
-      const startMinutes = sessionsStore.timeToMinutes(firstRange.start)
-      const endMinutes = sessionsStore.timeToMinutes(firstRange.end)
+      const startMinutes = sessionsStore.timeToMinutes(range.start)
+      const endMinutes = sessionsStore.timeToMinutes(range.end)
       const duration = endMinutes - startMinutes
       
       const sessionData = {
@@ -386,76 +404,68 @@ const handleSubmit = async () => {
         branch_id: branchId,
         volunteer_id: userId,
         session_date: sessionForm.value.session_date,
-        start_time: firstRange.start,
+        start_time: range.start,
         duration_minutes: duration
       }
       
-      const updateSuccess = await sessionsStore.updateSession(editingSession.value.id, sessionData)
+      const result = await sessionsStore.createSession(sessionData)
       
-      if (updateSuccess) {
-        success_msg = 'Session updated successfully!'
-        sessionsStore.cancelEdit()
-      } else {
-        error.value = 'Failed to update session'
-        return
-      }
-    } else {
-      // Create multiple sessions for multiple ranges
-      let allSuccess = true
-      const createdSessions: Session[] = []
-      
-      for (const range of selectedTimeRanges.value.ranges) {
-        if (!range.start || !range.end) continue
-        
-        const startMinutes = sessionsStore.timeToMinutes(range.start)
-        const endMinutes = sessionsStore.timeToMinutes(range.end)
-        const duration = endMinutes - startMinutes
-        
-        const sessionData = {
-          participant_id: participant.id,
-          participant_name: participant.name,
-          branch_id: branchId,
-          volunteer_id: userId,
-          session_date: sessionForm.value.session_date,
-          start_time: range.start,
-          duration_minutes: duration
+      if (result.success) {
+        // Create a mock session object for immediate display
+        const newSession: Session = {
+          id: Date.now() + Math.random(), // Temporary unique ID
+          participant_id: sessionData.participant_id,
+          participant_name: sessionData.participant_name,
+          branch_id: sessionData.branch_id,
+          volunteer_id: sessionData.volunteer_id,
+          session_date: sessionData.session_date,
+          start_time: sessionData.start_time,
+          duration_minutes: sessionData.duration_minutes,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }
-        
-        const createSuccess = await sessionsStore.createSession(sessionData)
-        
-        if (createSuccess) {
-          // Create a mock session object for immediate display
-          const newSession: Session = {
-            id: Date.now() + Math.random(), // Temporary unique ID
-            participant_id: sessionData.participant_id,
-            participant_name: sessionData.participant_name,
-            branch_id: sessionData.branch_id,
-            volunteer_id: sessionData.volunteer_id,
-            session_date: sessionData.session_date,
-            start_time: sessionData.start_time,
-            duration_minutes: sessionData.duration_minutes,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
-          createdSessions.push(newSession)
+        createdSessions.push(newSession)
+      } else {
+        if (result.errorType === 'duplicate_session') {
+          // Handle duplicate session - skip and continue with other sessions
+          const timeFormatted = formatTime(range.start)
+          skippedSessions.push(`${timeFormatted} (${duration}min)`)
         } else {
-          allSuccess = false
-          break
+          // Other errors - stop processing
+          error.value = result.error || 'Failed to create session'
+          return
         }
       }
+    }
+    
+    let success_msg = ''
+    if (createdSessions.length > 0) {
+      const rangeCount = createdSessions.length
+      success_msg = `${rangeCount > 1 ? rangeCount + ' sessions' : 'Session'} recorded successfully!`
       
-      if (allSuccess) {
-        const rangeCount = selectedTimeRanges.value.ranges.length
-        success_msg = `${rangeCount > 1 ? rangeCount + ' sessions' : 'Session'} recorded successfully!`
-        sessionsStore.clearForm()
-        participantsStore.clearSearch()
-        
-        // Add new sessions to local list
-        dateSessionsList.value.unshift(...createdSessions)
+      // Add new sessions to local list
+      dateSessionsList.value.unshift(...createdSessions)
+    }
+    
+    // Handle mixed results (some successful, some duplicates)
+    if (skippedSessions.length > 0) {
+      if (createdSessions.length > 0) {
+        // Some sessions created, some skipped
+        success_msg += `\n⚠️ Skipped ${skippedSessions.length} duplicate session${skippedSessions.length > 1 ? 's' : ''}: ${skippedSessions.join(', ')}`
+        appStore.showSuccess(success_msg)
       } else {
-        error.value = 'Failed to record some sessions'
+        // All sessions were duplicates
+        error.value = `All selected time slots already have sessions for ${participant.name} on this date. Skipped: ${skippedSessions.join(', ')}`
         return
       }
+    } else if (createdSessions.length > 0) {
+      // All sessions created successfully
+      sessionsStore.clearForm(true) // Preserve the date
+      participantsStore.clearSearch()
+    } else {
+      // No sessions created and no duplicates (shouldn't happen)
+      error.value = 'No sessions were created'
+      return
     }
     
     success.value = success_msg
@@ -479,14 +489,6 @@ const handleSubmit = async () => {
   }
 }
 
-const cancelEdit = () => {
-  sessionsStore.cancelEdit()
-  participantsStore.clearSearch()
-  success.value = 'Edit cancelled - ready for new session'
-  setTimeout(() => {
-    success.value = ''
-  }, 3000)
-}
 
 // Watch for date changes to load sessions
 watch(() => sessionForm.value.session_date, (newDate) => {
@@ -495,6 +497,7 @@ watch(() => sessionForm.value.session_date, (newDate) => {
   }
 })
 
+
 // Lifecycle
 onMounted(async () => {
   // Load dashboard data for metrics
@@ -502,18 +505,6 @@ onMounted(async () => {
   
   // Load sessions for current date
   loadSessionsForDate(sessionForm.value.session_date)
-  
-  // If editing, populate participant data
-  if (editingSession.value) {
-    const participant = participantsStore.participants.find(
-      p => p.name === editingSession.value?.participant_name
-    )
-    
-    if (participant) {
-      participantsStore.selectParticipant(participant)
-      selectedParticipant.value = participant
-    }
-  }
   
   // Set initial duration from ranges
   currentDuration.value = selectedTimeRanges.value.totalDuration

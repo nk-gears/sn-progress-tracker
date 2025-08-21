@@ -9,7 +9,7 @@ export default defineConfig({
     vue(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['sn-logo.png', 'manifest.json'],
+      includeAssets: ['./sn-logo.png', 'manifest.json'],
       manifest: {
         name: 'Meditation Time Tracker',
         short_name: 'Meditation Tracker',
@@ -18,20 +18,20 @@ export default defineConfig({
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait-primary',
-        start_url: '/',
+        start_url: '/sn-progress/',
         icons: [
           {
-            src: 'sn-logo.png',
+            src: './sn-logo.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'sn-logo.png',
+            src: './sn-logo.png',
             sizes: '512x512',
             type: 'image/png'
           },
           {
-            src: 'sn-logo.png',
+            src: './sn-logo.png',
             sizes: 'any',
             type: 'image/png',
             purpose: 'any maskable'

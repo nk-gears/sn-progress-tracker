@@ -163,6 +163,13 @@ class ApiService {
         () => realApi.participants.findOrCreate(name, branchId, age, gender),
         () => mockApi.participants.findOrCreate(name, branchId, age, gender)
       )
+    },
+
+    getLastSession: async (participantId: number, branchId: number): Promise<any> => {
+      return this.callWithFallback(
+        () => realApi.participants.getLastSession(participantId, branchId),
+        () => mockApi.participants.getLastSession(participantId, branchId)
+      )
     }
   }
 
@@ -203,6 +210,23 @@ class ApiService {
       return this.callWithFallback(
         () => realApi.dashboard.getStats(branchId, month),
         () => mockApi.dashboard.getStats(branchId, month)
+      )
+    }
+  }
+
+  // Profile API
+  profile = {
+    updatePhone: async (data: { userId: number; newPhone: string; currentPassword: string }): Promise<AuthResponse> => {
+      return this.callWithFallback(
+        () => realApi.profile.updatePhone(data),
+        () => mockApi.profile.updatePhone(data)
+      )
+    },
+
+    updatePassword: async (data: { userId: number; currentPassword: string; newPassword: string }): Promise<AuthResponse> => {
+      return this.callWithFallback(
+        () => realApi.profile.updatePassword(data),
+        () => mockApi.profile.updatePassword(data)
       )
     }
   }

@@ -67,7 +67,7 @@
 
     <!-- Bottom Navigation -->
     <nav v-if="!hideNavTabs" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30 safe-bottom">
-      <div class="grid grid-cols-3 h-16">
+      <div class="grid grid-cols-4 h-16">
         <router-link
           to="/dashboard"
           class="flex flex-col items-center justify-center space-y-1 text-xs font-medium touch-target transition-colors"
@@ -99,6 +99,17 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
           </svg>
           <span>Yogis</span>
+        </router-link>
+
+        <router-link
+          to="/profile"
+          class="flex flex-col items-center justify-center space-y-1 text-xs font-medium touch-target transition-colors"
+          :class="currentRoute === 'Profile' ? 'text-primary bg-blue-50' : 'text-gray-500 hover:text-gray-700'"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+          </svg>
+          <span>Profile</span>
         </router-link>
       </div>
     </nav>

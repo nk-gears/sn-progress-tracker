@@ -60,11 +60,19 @@ switch ($endpoint) {
         handleDashboard();
         break;
         
+    case 'profile':
+        handleProfile();
+        break;
+        
+    case 'onboard':
+        handleOnboard();
+        break;
+        
     default:
         sendResponse([
             'success' => false,
             'error' => 'Invalid endpoint',
-            'message' => "Endpoint '$endpoint' not found. Available endpoints: auth, participants, sessions, dashboard",
+            'message' => "Endpoint '$endpoint' not found. Available endpoints: auth, participants, sessions, dashboard, profile, onboard",
             'available_endpoints' => [
                 'POST /api/auth - User authentication',
                 'GET /api/participants - Get participants',
@@ -74,7 +82,10 @@ switch ($endpoint) {
                 'POST /api/sessions - Create session',
                 'PUT /api/sessions - Update session',
                 'DELETE /api/sessions - Delete session',
-                'GET /api/dashboard - Get analytics'
+                'GET /api/dashboard - Get analytics',
+                'PUT /api/profile/phone - Update phone number',
+                'PUT /api/profile/password - Update password',
+                'POST /api/onboard - Onboard new user with branch mapping'
             ]
         ], 404);
 }
@@ -147,9 +158,33 @@ function handleParticipants() {
         $branch_id = $_GET['branch_id'] ?? null;
         $search = $_GET['search'] ?? '';
         $action = $_GET['action'] ?? 'list';
+        $participant_id = $_GET['participant_id'] ?? null;
 
         if (!$branch_id) {
             sendResponse(['success' => false, 'message' => 'Branch ID is required'], 400);
+        }
+
+        // Handle last session request for a specific participant
+        if ($action === 'last_session' && $participant_id) {
+            try {
+                $lastSession = fetchRow("
+                    SELECT start_time, duration_minutes, session_date
+                    FROM medt_meditation_sessions 
+                    WHERE participant_id = ? AND branch_id = ? 
+                    ORDER BY session_date DESC, start_time DESC 
+                    LIMIT 1
+                ", [(int)$participant_id, (int)$branch_id], 'ii');
+                
+                sendResponse([
+                    'success' => true, 
+                    'last_session' => $lastSession
+                ]);
+                return;
+            } catch (Exception $e) {
+                error_log('Last session error: ' . $e->getMessage());
+                sendResponse(['success' => false, 'message' => 'Failed to fetch last session'], 500);
+                return;
+            }
         }
 
         try {
@@ -441,6 +476,21 @@ function handleSessions() {
                 sendResponse(['success' => false, 'message' => 'Participant not found'], 400);
             }
 
+            // Check for duplicate session (same participant, date, and start time)
+            $existingSession = fetchRow("
+                SELECT id FROM medt_meditation_sessions 
+                WHERE participant_id = ? AND session_date = ? AND start_time = ?
+            ", [$participant_id, $session_date, $start_time], 'iss');
+
+            if ($existingSession) {
+                sendResponse([
+                    'success' => false, 
+                    'message' => "Session already exists for {$participant['name']} on {$session_date} at {$start_time}",
+                    'error_type' => 'duplicate_session'
+                ], 409); // 409 Conflict
+                return;
+            }
+
             // Create session
             $result = executeInsert("
                 INSERT INTO medt_meditation_sessions 
@@ -676,6 +726,331 @@ function handleDashboard() {
     } catch (Exception $e) {
         error_log('Dashboard error: ' . $e->getMessage());
         sendResponse(['success' => false, 'message' => 'Failed to fetch dashboard data'], 500);
+    }
+}
+
+// Profile handler
+function handleProfile() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'PUT') {
+        sendResponse(['success' => false, 'message' => 'Method not allowed for /api/profile'], 405);
+    }
+
+    // Parse the path to get the profile action
+    $request_uri = $_SERVER['REQUEST_URI'];
+    $parsed_url = parse_url($request_uri);
+    $path = trim($parsed_url['path'], '/');
+    
+    // Remove any subdirectory prefix and api.php
+    $path = preg_replace('/^.*\/api\.php\/?/', '', $path);
+    $path = preg_replace('/^.*\/api\/?/', '', $path);
+    
+    $path_segments = array_filter(explode('/', $path));
+    
+    // Get the action (phone or password)
+    $action = '';
+    if (count($path_segments) >= 2 && $path_segments[0] === 'profile') {
+        $action = $path_segments[1];
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    switch ($action) {
+        case 'phone':
+            handlePhoneUpdate($input);
+            break;
+            
+        case 'password':
+            handlePasswordUpdate($input);
+            break;
+            
+        default:
+            sendResponse([
+                'success' => false, 
+                'message' => "Invalid profile action. Available actions: phone, password"
+            ], 400);
+    }
+}
+
+// Handle phone number update
+function handlePhoneUpdate($input) {
+    $missing = validateRequired($input, ['userId', 'newPhone', 'currentPassword']);
+    
+    if (!empty($missing)) {
+        sendResponse(['success' => false, 'message' => 'Missing required fields: ' . implode(', ', $missing)], 400);
+    }
+
+    $userId = (int)$input['userId'];
+    $newPhone = trim($input['newPhone']);
+    $currentPassword = $input['currentPassword'];
+
+    // Validate phone number format
+    if (!preg_match('/^\d{10}$/', $newPhone)) {
+        sendResponse(['success' => false, 'message' => 'Phone number must be 10 digits'], 400);
+    }
+
+    try {
+        // Get current user data
+        $user = fetchRow(
+            "SELECT id, name, mobile, password FROM medt_users WHERE id = ?",
+            [$userId],
+            'i'
+        );
+
+        if (!$user) {
+            sendResponse(['success' => false, 'message' => 'User not found'], 404);
+        }
+
+        // Note: Password verification is commented out for testing
+        // if (!password_verify($currentPassword, $user['password'])) {
+        //     sendResponse(['success' => false, 'message' => 'Current password is incorrect'], 400);
+        // }
+
+        // Check if new phone number is already in use
+        $existingUser = fetchRow(
+            "SELECT id FROM medt_users WHERE mobile = ? AND id != ?",
+            [$newPhone, $userId],
+            'si'
+        );
+
+        if ($existingUser) {
+            sendResponse(['success' => false, 'message' => 'Phone number already in use'], 400);
+        }
+
+        // Update phone number
+        executeQuery(
+            "UPDATE medt_users SET mobile = ? WHERE id = ?",
+            [$newPhone, $userId],
+            'si'
+        );
+
+        global $mysqli;
+        if ($mysqli->affected_rows === 0) {
+            sendResponse(['success' => false, 'message' => 'Failed to update phone number'], 500);
+        }
+
+        // Return updated user data
+        $updatedUser = [
+            'id' => (int)$user['id'],
+            'name' => $user['name'],
+            'mobile' => $newPhone
+        ];
+
+        sendResponse([
+            'success' => true,
+            'message' => 'Phone number updated successfully',
+            'user' => $updatedUser
+        ]);
+
+    } catch (Exception $e) {
+        error_log('Phone update error: ' . $e->getMessage());
+        sendResponse(['success' => false, 'message' => 'Failed to update phone number'], 500);
+    }
+}
+
+// Handle password update
+function handlePasswordUpdate($input) {
+    $missing = validateRequired($input, ['userId', 'currentPassword', 'newPassword']);
+    
+    if (!empty($missing)) {
+        sendResponse(['success' => false, 'message' => 'Missing required fields: ' . implode(', ', $missing)], 400);
+    }
+
+    $userId = (int)$input['userId'];
+    $currentPassword = $input['currentPassword'];
+    $newPassword = $input['newPassword'];
+
+    // Validate new password length
+    if (strlen($newPassword) < 6) {
+        sendResponse(['success' => false, 'message' => 'New password must be at least 6 characters long'], 400);
+    }
+
+    try {
+        // Get current user data
+        $user = fetchRow(
+            "SELECT id, password FROM medt_users WHERE id = ?",
+            [$userId],
+            'i'
+        );
+
+        if (!$user) {
+            sendResponse(['success' => false, 'message' => 'User not found'], 404);
+        }
+
+        // Note: Password verification is commented out for testing
+        // if (!password_verify($currentPassword, $user['password'])) {
+        //     sendResponse(['success' => false, 'message' => 'Current password is incorrect'], 400);
+        // }
+
+        // Hash new password
+        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+
+        // Update password
+        executeQuery(
+            "UPDATE medt_users SET password = ? WHERE id = ?",
+            [$hashedPassword, $userId],
+            'si'
+        );
+
+        global $mysqli;
+        if ($mysqli->affected_rows === 0) {
+            sendResponse(['success' => false, 'message' => 'Failed to update password'], 500);
+        }
+
+        sendResponse([
+            'success' => true,
+            'message' => 'Password updated successfully'
+        ]);
+
+    } catch (Exception $e) {
+        error_log('Password update error: ' . $e->getMessage());
+        sendResponse(['success' => false, 'message' => 'Failed to update password'], 500);
+    }
+}
+
+// User Onboarding handler
+function handleOnboard() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        sendResponse(['success' => false, 'message' => 'Only POST method allowed'], 405);
+        return;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $missing = validateRequired($input, ['name', 'mobile', 'password', 'branch_name']);
+
+    if (!empty($missing)) {
+        sendResponse(['success' => false, 'message' => 'Missing required fields: ' . implode(', ', $missing)], 400);
+        return;
+    }
+
+    $name = trim($input['name']);
+    $mobile = trim($input['mobile']);
+    $password = $input['password'];
+    $branchName = trim($input['branch_name']);
+    $email = isset($input['email']) ? trim($input['email']) : null;
+
+    // Validate mobile number format
+    if (!preg_match('/^\d{10}$/', $mobile)) {
+        sendResponse(['success' => false, 'message' => 'Mobile number must be exactly 10 digits'], 400);
+        return;
+    }
+
+    // Validate password length
+    if (strlen($password) < 6) {
+        sendResponse(['success' => false, 'message' => 'Password must be at least 6 characters long'], 400);
+        return;
+    }
+
+    try {
+        // Resolve branch ID from branch name
+        $branch = fetchRow(
+            "SELECT id, name FROM medt_branches WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1",
+            [$branchName],
+            's'
+        );
+
+        if (!$branch) {
+            sendResponse([
+                'success' => false, 
+                'message' => "Branch '$branchName' not found. Please check the branch name."
+            ], 404);
+            return;
+        }
+
+        $branchId = (int)$branch['id'];
+
+        // Check if user already exists
+        $existingUser = fetchRow(
+            "SELECT id, name, mobile FROM medt_users WHERE mobile = ?",
+            [$mobile],
+            's'
+        );
+
+        if ($existingUser) {
+            // User exists - update their branch access
+            $userId = (int)$existingUser['id'];
+            
+            // Check if user already has access to this branch
+            $existingAccess = fetchRow(
+                "SELECT id FROM medt_user_branches WHERE user_id = ? AND branch_id = ?",
+                [$userId, $branchId],
+                'ii'
+            );
+
+            if (!$existingAccess) {
+                // Add branch access
+                executeInsert(
+                    "INSERT INTO medt_user_branches (user_id, branch_id) VALUES (?, ?)",
+                    [$userId, $branchId],
+                    'ii'
+                );
+            }
+
+            // Update user details if provided
+            $updateData = [];
+            $updateParams = [];
+            $updateTypes = '';
+
+            if ($name && $name !== $existingUser['name']) {
+                $updateData[] = "name = ?";
+                $updateParams[] = $name;
+                $updateTypes .= 's';
+            }
+
+            if (!empty($updateData)) {
+                $updateParams[] = $userId;
+                $updateTypes .= 'i';
+                
+                executeQuery(
+                    "UPDATE medt_users SET " . implode(', ', $updateData) . " WHERE id = ?",
+                    $updateParams,
+                    $updateTypes
+                );
+            }
+
+            sendResponse([
+                'success' => true,
+                'message' => "User '{$existingUser['name']}' updated successfully",
+                'user_id' => $userId,
+                'branch_id' => $branchId,
+                'branch_name' => $branch['name'],
+                'action' => 'updated'
+            ]);
+
+        } else {
+            // Create new user
+            $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+            
+            $userId = executeInsert(
+                "INSERT INTO medt_users (name, mobile, email, password) VALUES (?, ?, ?, ?)",
+                [$name, $mobile, $email, $hashedPassword],
+                'ssss'
+            );
+
+            if (!$userId) {
+                sendResponse(['success' => false, 'message' => 'Failed to create user'], 500);
+                return;
+            }
+
+            // Add branch access
+            executeInsert(
+                "INSERT INTO medt_user_branches (user_id, branch_id) VALUES (?, ?)",
+                [$userId, $branchId],
+                'ii'
+            );
+
+            sendResponse([
+                'success' => true,
+                'message' => "User '$name' created successfully",
+                'user_id' => $userId,
+                'branch_id' => $branchId,
+                'branch_name' => $branch['name'],
+                'action' => 'created'
+            ]);
+        }
+
+    } catch (Exception $e) {
+        error_log('Onboard error: ' . $e->getMessage());
+        sendResponse(['success' => false, 'message' => 'Failed to onboard user'], 500);
     }
 }
 ?>

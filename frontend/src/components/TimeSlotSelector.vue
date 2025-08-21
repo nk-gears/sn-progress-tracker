@@ -91,6 +91,7 @@
                 </div>
               </div>
               <button
+                type="button"
                 @click="removeRange(index)"
                 class="text-red-500 hover:text-red-700 text-xs"
                 title="Remove this range"

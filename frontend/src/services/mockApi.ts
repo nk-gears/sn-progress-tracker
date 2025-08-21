@@ -179,6 +179,31 @@ export const mockApi = {
         gender: gender || null,
         branch_id: branchId
       })
+    },
+
+    async getLastSession(participantId: number, branchId: number): Promise<any> {
+      await simulateDelay(100, 300)
+      
+      // Find the last session for this participant
+      const participantSessions = mockSessions
+        .filter(s => s.participant_id === participantId && s.branch_id === branchId)
+        .sort((a, b) => {
+          // Sort by date desc, then by time desc
+          const dateCompare = b.session_date.localeCompare(a.session_date)
+          if (dateCompare !== 0) return dateCompare
+          return b.start_time.localeCompare(a.start_time)
+        })
+      
+      const lastSession = participantSessions[0] || null
+      
+      return {
+        success: true,
+        last_session: lastSession ? {
+          start_time: lastSession.start_time,
+          duration_minutes: lastSession.duration_minutes,
+          session_date: lastSession.session_date
+        } : null
+      }
     }
   },
   
@@ -206,6 +231,21 @@ export const mockApi = {
         return {
           success: false,
           message: 'Participant not found'
+        }
+      }
+      
+      // Check for duplicate session (same participant, date, and start time)
+      const existingSession = mockSessions.find(s => 
+        s.participant_id === sessionData.participant_id &&
+        s.session_date === sessionData.session_date &&
+        s.start_time === sessionData.start_time
+      )
+      
+      if (existingSession) {
+        return {
+          success: false,
+          message: `Session already exists for ${participant.name} on ${sessionData.session_date} at ${sessionData.start_time}`,
+          error_type: 'duplicate_session'
         }
       }
       
@@ -350,6 +390,77 @@ export const mockApi = {
           time_distribution: timeDistribution.filter(d => d.session_count > 0),
           daily_stats: dailyStats
         }
+      }
+    }
+  },
+  
+  // Profile endpoints
+  profile: {
+    async updatePhone(data: { userId: number; newPhone: string; currentPassword: string }): Promise<AuthResponse> {
+      await simulateDelay()
+      
+      const user = mockUsers.find(u => u.id === data.userId)
+      
+      if (!user) {
+        return {
+          success: false,
+          message: 'User not found'
+        }
+      }
+      
+      // Check if phone is already in use
+      const existingUser = mockUsers.find(u => u.mobile === data.newPhone && u.id !== data.userId)
+      if (existingUser) {
+        return {
+          success: false,
+          message: 'Phone number already in use'
+        }
+      }
+      
+      // Validate phone format
+      if (!/^\d{10}$/.test(data.newPhone)) {
+        return {
+          success: false,
+          message: 'Phone number must be 10 digits'
+        }
+      }
+      
+      // Update user phone
+      user.mobile = data.newPhone
+      
+      return {
+        success: true,
+        user,
+        message: 'Phone number updated successfully'
+      }
+    },
+    
+    async updatePassword(data: { userId: number; currentPassword: string; newPassword: string }): Promise<AuthResponse> {
+      await simulateDelay()
+      
+      const user = mockUsers.find(u => u.id === data.userId)
+      
+      if (!user) {
+        return {
+          success: false,
+          message: 'User not found'
+        }
+      }
+      
+      // Validate new password
+      if (data.newPassword.length < 6) {
+        return {
+          success: false,
+          message: 'New password must be at least 6 characters long'
+        }
+      }
+      
+      // For mock API, we don't actually store or verify passwords
+      // In real implementation, you would verify currentPassword and hash newPassword
+      
+      return {
+        success: true,
+        message: 'Password updated successfully'
       }
     }
   }

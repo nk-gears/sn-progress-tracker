@@ -6,8 +6,8 @@
         <div class="w-24 h-24 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg p-4">
           <img src="/sn-logo.png" alt="SN Logo" class="w-full h-full object-contain">
         </div>
-        <h1 class="text-3xl font-bold text-white mb-2">Meditation Tracker</h1>
-        <p class="text-blue-100 text-lg">BK Branch wise Collective Yoga Tracker </p>
+        <h1 class="text-3xl font-bold text-white mb-2">Experience Room - Meditation tracker</h1>
+        <p class="text-blue-100 text-lg">BK Branchwise Collective Yoga - Login </p>
         <div class="w-20 h-1 bg-white bg-opacity-30 rounded-full mx-auto mt-4"></div>
       </div>
 

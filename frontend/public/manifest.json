@@ -12,7 +12,7 @@
   "categories": ["health", "lifestyle", "productivity"],
   "icons": [
     {
-      "src": "/sn-logo.png",
+      "src": "/sn-progress/sn-logo.png",
       "sizes": "any",
       "type": "image/png",
       "purpose": "any maskable"

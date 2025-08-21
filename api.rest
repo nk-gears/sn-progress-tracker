@@ -2,3 +2,24 @@ POST http://localhost:8081/auth.php
 Content-Type: application/json
 
 {"mobile":"9283181228","password":"meditation123"}
+
+
+### MA
+
+GET /sn-progress/api/participants?branch_id=2&search=Ni&action=search HTTP/1.1
+host: happy-village.org
+accept: */*
+accept-language: en-IN,en-GB;q=0.9,en-US;q=0.8,en;q=0.7,hi;q=0.6,bm;q=0.5,ta;q=0.4
+content-type: application/json
+if-modified-since: Thu, 21 Aug 2025 06:43:10 GMT
+if-none-match: "b1b-68a6bffe-3e18f402c981a9d3;br"
+priority: u=1, i
+referer: https://happy-village.org/sn-progress/data-entry
+sec-ch-ua: "Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"
+sec-ch-ua-mobile: ?0
+sec-ch-ua-platform: "macOS"
+sec-fetch-dest: empty
+sec-fetch-mode: cors
+sec-fetch-site: same-origin
+user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+

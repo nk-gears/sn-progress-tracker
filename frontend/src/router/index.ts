@@ -8,6 +8,7 @@ const BranchSelectionView = () => import('@/views/BranchSelectionView.vue')
 const DashboardView = () => import('@/views/DashboardView.vue')
 const DataEntryView = () => import('@/views/DataEntryView.vue')
 const ParticipantsView = () => import('@/views/ParticipantsView.vue')
+const ProfileView = () => import('@/views/ProfileView.vue')
 
 const routes: RouteRecordRaw[] = [
   {
@@ -60,6 +61,15 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       requiresBranch: true,
       title: 'Participants - Meditation Tracker'
+    }
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: ProfileView,
+    meta: {
+      requiresAuth: true,
+      title: 'Profile - Meditation Tracker'
     }
   },
   {

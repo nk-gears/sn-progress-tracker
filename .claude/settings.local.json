@@ -12,7 +12,9 @@
       "Bash(cp:*)",
       "Bash(npm install:*)",
       "Bash(pnpm add:*)",
-      "Bash(npm run preview:*)"
+      "Bash(npm run preview:*)",
+      "Bash(lsof:*)",
+      "Bash(kill:*)"
     ],
     "deny": []
   }

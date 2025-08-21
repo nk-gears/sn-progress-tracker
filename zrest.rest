@@ -1,0 +1,4 @@
+POST https://happy-village.org/sn-progress/api.php/auth
+Content-Type: application/json
+
+{"mobile":"9283181228","password":"meditation123"}

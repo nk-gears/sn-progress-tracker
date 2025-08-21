@@ -1,14 +1,16 @@
 # Enable URL rewriting
 RewriteEngine On
 
-# Handle Vue Router routes for SPA in subdirectory
+# API Routes - Route all /api/* requests to api.php
+RewriteCond %{REQUEST_URI} ^(.*/)?api/(.*)$
+RewriteRule ^(.*/)?api/(.*)$ $1api.php [L,QSA]
+
+# Vue SPA Routes - Handle frontend routes
 # Don't rewrite if the file or directory exists
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-
-# Don't rewrite API calls
-RewriteCond %{REQUEST_URI} !^/[^/]*/api/
-
+# Don't rewrite API calls (already handled above)
+RewriteCond %{REQUEST_URI} !^(.*/)?api/
 # Rewrite everything else to index.html
 RewriteRule ^(.*)$ index.html [L,QSA]
 

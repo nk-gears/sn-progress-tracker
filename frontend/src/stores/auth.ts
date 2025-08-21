@@ -20,7 +20,12 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await apiService.auth.login({ mobile, password })
       
-      if (response.success && response.user) {
+      // Check if login was successful
+      if (!response.success) {
+        return false
+      }
+      
+      if (response.user) {
         user.value = response.user
         userBranches.value = response.branches || []
         isAuthenticated.value = true
@@ -91,6 +96,12 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('selected_branch')
   }
   
+  const updateUser = (updatedUser: User) => {
+    user.value = updatedUser
+    // Update localStorage
+    localStorage.setItem('auth_user', JSON.stringify(updatedUser))
+  }
+  
   return {
     // State
     user,
@@ -108,6 +119,7 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     selectBranch,
     restoreSession,
-    clearBranchSelection
+    clearBranchSelection,
+    updateUser
   }
 })

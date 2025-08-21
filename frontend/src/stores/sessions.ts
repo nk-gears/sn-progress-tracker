@@ -29,10 +29,10 @@ export const useSessionsStore = defineStore('sessions', () => {
   const isSelecting = ref(false)
   
   const timePeriods = computed(() => [
-    { name: 'Morning', start: '07:00', end: '12:00' },
+    { name: 'Morning', start: '06:00', end: '12:00' },
     { name: 'Afternoon', start: '12:00', end: '17:00' },
     { name: 'Evening', start: '17:00', end: '22:00' },
-    { name: 'All', start: '07:00', end: '22:00' }
+    { name: 'All', start: '06:00', end: '22:00' }
   ])
   
   const filteredTimeSlots = computed(() => {
@@ -119,7 +119,7 @@ export const useSessionsStore = defineStore('sessions', () => {
     }
   }
   
-  const createSession = async (sessionData: Omit<Session, 'id' | 'created_at'>): Promise<boolean> => {
+  const createSession = async (sessionData: Omit<Session, 'id' | 'created_at'>): Promise<{ success: boolean; error?: string; errorType?: string }> => {
     try {
       const response = await apiService.sessions.create(sessionData)
       
@@ -130,13 +130,24 @@ export const useSessionsStore = defineStore('sessions', () => {
           todaySessions.value.unshift(response.session)
         }
         
-        return true
+        // Refresh dashboard data to update total hours
+        await loadDashboardData()
+        
+        return { success: true }
+      } else {
+        return { 
+          success: false, 
+          error: response.message || 'Failed to create session',
+          errorType: response.error_type
+        }
       }
     } catch (error) {
       console.error('Error creating session:', error)
+      return { 
+        success: false, 
+        error: 'Network error occurred while creating session'
+      }
     }
-    
-    return false
   }
   
   const updateSession = async (id: number, sessionData: Partial<Session>): Promise<boolean> => {
@@ -149,6 +160,9 @@ export const useSessionsStore = defineStore('sessions', () => {
         if (index >= 0) {
           todaySessions.value[index] = { ...todaySessions.value[index], ...sessionData }
         }
+        
+        // Refresh dashboard data to update total hours
+        await loadDashboardData()
         
         return true
       }
@@ -169,6 +183,9 @@ export const useSessionsStore = defineStore('sessions', () => {
         if (index >= 0) {
           todaySessions.value.splice(index, 1)
         }
+        
+        // Refresh dashboard data to update total hours
+        await loadDashboardData()
         
         return true
       }
@@ -207,12 +224,13 @@ export const useSessionsStore = defineStore('sessions', () => {
     clearForm()
   }
   
-  const clearForm = () => {
+  const clearForm = (preserveDate = false) => {
+    const currentDate = sessionForm.value.session_date
     sessionForm.value = {
       participant_name: '',
       participant_age: null,
       participant_gender: null,
-      session_date: new Date().toISOString().slice(0, 10)
+      session_date: preserveDate ? currentDate : new Date().toISOString().slice(0, 10)
     }
     selectedTimeRanges.value = { ranges: [], totalDuration: 0 }
     isSelecting.value = false

@@ -47,7 +47,7 @@ export const realApi = {
   auth: {
     async login(credentials: LoginCredentials): Promise<AuthResponse> {
       try {
-        const response = await apiRequest('api.php/auth', {
+        const response = await apiRequest('auth', {
           method: 'POST',
           body: JSON.stringify(credentials)
         })
@@ -81,7 +81,7 @@ export const realApi = {
           ...(search && { search })
         })
 
-        const response = await apiRequest(`api.php/participants?${params}`)
+        const response = await apiRequest(`participants?${params}`)
         const data = await response.json()
 
         if (!response.ok) {
@@ -109,7 +109,7 @@ export const realApi = {
           action: 'search'
         })
 
-        const response = await apiRequest(`api.php/participants?${params}`)
+        const response = await apiRequest(`participants?${params}`)
         const data = await response.json()
 
         if (!response.ok) {
@@ -131,7 +131,7 @@ export const realApi = {
 
     async create(participantData: ParticipantForm): Promise<ParticipantResponse> {
       try {
-        const response = await apiRequest('api.php/participants', {
+        const response = await apiRequest('participants', {
           method: 'POST',
           body: JSON.stringify(participantData)
         })
@@ -157,7 +157,7 @@ export const realApi = {
 
     async update(id: number, data: Partial<Participant>): Promise<ParticipantResponse> {
       try {
-        const response = await apiRequest('api.php/participants', {
+        const response = await apiRequest('participants', {
           method: 'PUT',
           body: JSON.stringify({ id, ...data })
         })
@@ -183,7 +183,7 @@ export const realApi = {
 
     async findOrCreate(name: string, branchId: number, age?: number, gender?: string): Promise<ParticipantResponse> {
       try {
-        const response = await apiRequest('api.php/participants', {
+        const response = await apiRequest('participants', {
           method: 'POST',
           body: JSON.stringify({
             action: 'findOrCreate',
@@ -211,6 +211,34 @@ export const realApi = {
           message: 'Network error. Please check your connection.'
         }
       }
+    },
+
+    async getLastSession(participantId: number, branchId: number): Promise<any> {
+      try {
+        const params = new URLSearchParams({
+          action: 'last_session',
+          participant_id: participantId.toString(),
+          branch_id: branchId.toString()
+        })
+
+        const response = await apiRequest(`participants?${params}`)
+        const data = await response.json()
+
+        if (!response.ok) {
+          return {
+            success: false,
+            message: data.message || data.error || 'Failed to fetch last session'
+          }
+        }
+
+        return data
+      } catch (error) {
+        console.error('Get last session API error:', error)
+        return {
+          success: false,
+          message: 'Network error. Please check your connection.'
+        }
+      }
     }
   },
 
@@ -223,7 +251,7 @@ export const realApi = {
           date
         })
 
-        const response = await apiRequest(`api.php/sessions?${params}`)
+        const response = await apiRequest(`sessions?${params}`)
         const data = await response.json()
 
         if (!response.ok) {
@@ -245,7 +273,7 @@ export const realApi = {
 
     async create(sessionData: SessionCreateData): Promise<SessionResponse> {
       try {
-        const response = await apiRequest('api.php/sessions', {
+        const response = await apiRequest('sessions', {
           method: 'POST',
           body: JSON.stringify(sessionData)
         })
@@ -271,7 +299,7 @@ export const realApi = {
 
     async update(id: number, sessionData: Partial<Session>): Promise<SessionResponse> {
       try {
-        const response = await apiRequest('api.php/sessions', {
+        const response = await apiRequest('sessions', {
           method: 'PUT',
           body: JSON.stringify({ id, ...sessionData })
         })
@@ -299,7 +327,7 @@ export const realApi = {
       try {
         const params = new URLSearchParams({ id: id.toString() })
         
-        const response = await apiRequest(`api.php/sessions?${params}`, {
+        const response = await apiRequest(`sessions?${params}`, {
           method: 'DELETE'
         })
 
@@ -332,7 +360,7 @@ export const realApi = {
           month
         })
 
-        const response = await apiRequest(`api.php/dashboard?${params}`)
+        const response = await apiRequest(`dashboard?${params}`)
         const data = await response.json()
 
         if (!response.ok) {
@@ -345,6 +373,61 @@ export const realApi = {
         return data
       } catch (error) {
         console.error('Dashboard API error:', error)
+        return {
+          success: false,
+          message: 'Network error. Please check your connection.'
+        }
+      }
+    }
+  },
+
+  // Profile endpoints
+  profile: {
+    async updatePhone(data: { userId: number; newPhone: string; currentPassword: string }): Promise<AuthResponse> {
+      try {
+        const response = await apiRequest('profile/phone', {
+          method: 'PUT',
+          body: JSON.stringify(data)
+        })
+
+        const responseData = await response.json()
+
+        if (!response.ok) {
+          return {
+            success: false,
+            message: responseData.message || responseData.error || 'Failed to update phone number'
+          }
+        }
+
+        return responseData
+      } catch (error) {
+        console.error('Update phone API error:', error)
+        return {
+          success: false,
+          message: 'Network error. Please check your connection.'
+        }
+      }
+    },
+
+    async updatePassword(data: { userId: number; currentPassword: string; newPassword: string }): Promise<AuthResponse> {
+      try {
+        const response = await apiRequest('profile/password', {
+          method: 'PUT',
+          body: JSON.stringify(data)
+        })
+
+        const responseData = await response.json()
+
+        if (!response.ok) {
+          return {
+            success: false,
+            message: responseData.message || responseData.error || 'Failed to update password'
+          }
+        }
+
+        return responseData
+      } catch (error) {
+        console.error('Update password API error:', error)
         return {
           success: false,
           message: 'Network error. Please check your connection.'
