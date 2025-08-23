@@ -48,8 +48,8 @@
             @participant-selected="handleParticipantSelected"
           />
 
-          <!-- Time Slot Selector Component - Only show when participant is selected -->
-          <div v-if="selectedParticipant">
+          <!-- Time Slot Selector Component - Show when participant name is entered -->
+          <div v-if="sessionForm.participant_name.trim().length > 0">
             <!-- Last session info message -->
             <div v-if="lastSessionInfo" class="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
               {{ lastSessionInfo }}
@@ -62,8 +62,8 @@
             />
           </div>
 
-          <!-- Message when no participant is selected -->
-          <div v-if="!selectedParticipant" class="p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-center">
+          <!-- Message when no participant name is entered -->
+          <div v-if="sessionForm.participant_name.trim().length === 0" class="p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-center">
             <div class="flex items-center justify-center mb-2">
               <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -294,14 +294,14 @@ const deleteSession = async (session: Session) => {
 const handleParticipantSelected = async (participant: Participant | null) => {
   selectedParticipant.value = participant
   
-  // Clear time selection when participant is cleared
+  // Clear time selection and last session info when participant is cleared
   if (!participant) {
     selectedTimeRanges.value = { ranges: [], totalDuration: 0 }
     lastSessionInfo.value = ''
     return
   }
   
-  // Fetch last session for this participant and pre-populate time
+  // For existing participants with an ID, fetch last session and pre-populate time
   const branchId = authStore.currentBranch?.id
   if (branchId && participant.id) {
     try {
@@ -332,7 +332,7 @@ const handleParticipantSelected = async (participant: Participant | null) => {
         
         console.log(`Pre-populated time from last session: ${startTime} for ${duration} minutes`)
       } else {
-        // No previous session, clear selection
+        // No previous session for existing participant, clear selection
         selectedTimeRanges.value = { ranges: [], totalDuration: 0 }
         lastSessionInfo.value = ''
       }
@@ -342,6 +342,10 @@ const handleParticipantSelected = async (participant: Participant | null) => {
       selectedTimeRanges.value = { ranges: [], totalDuration: 0 }
       lastSessionInfo.value = ''
     }
+  } else {
+    // For new participants (no ID yet), clear time selection and last session info
+    selectedTimeRanges.value = { ranges: [], totalDuration: 0 }
+    lastSessionInfo.value = ''
   }
 }
 

@@ -10,11 +10,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // Database configuration
+// Development (local)
 $host = '192.168.1.13';
 $dbname = 'meditation_tracker';
 $username = 'mediuser';
 $password = 'mediuser123!';
 
+// Production
 // $host = 'localhost';
 // $dbname = 'u388678206_wB70c';
 // $username = 'u388678206_NQZQ0';

@@ -1,0 +1,125 @@
+# Meditation Tracker - Production .htaccess
+# Deployment Structure:
+# /sn-progress/          - Vue frontend (this directory)
+# /sn-progress/api/      - PHP backend files
+
+RewriteEngine On
+
+# Security - Prevent direct access to sensitive files
+# Allow manifest.json and other legitimate JSON files, but block config files
+<FilesMatch "\.(md|sh|yml|yaml|env|log|sql)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Block specific sensitive JSON files (but allow manifest.json, etc.)
+<FilesMatch "^(package|package-lock|tsconfig|vite\.config|\.eslintrc)\.json$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# API Routes - Route /api/* requests to the api directory
+# This handles: /sn-progress/api/auth -> /sn-progress/api/api.php
+RewriteCond %{REQUEST_URI} ^(.*/)?api/(.*)$
+RewriteRule ^api/(.*)$ api/api.php [L,QSA]
+
+# Vue Router (SPA) - Handle frontend routes  
+# Don't rewrite if the file or directory exists
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Don't rewrite API calls (already handled above)
+RewriteCond %{REQUEST_URI} !^(.*/)?api/
+
+# Rewrite everything else to index.html for Vue Router
+RewriteRule ^(.*)$ index.html [L,QSA]
+
+# MIME Types
+<IfModule mod_mime.c>
+    AddType application/javascript .js
+    AddType text/css .css
+    AddType image/png .png
+    AddType image/jpeg .jpg
+    AddType image/jpeg .jpeg
+    AddType image/gif .gif
+    AddType image/svg+xml .svg
+    AddType application/json .json
+    AddType application/manifest+json .webmanifest
+</IfModule>
+
+# Compression
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+    AddType application/json
+</IfModule>
+
+# Browser Caching for Static Assets
+<IfModule mod_expires.c>
+    ExpiresActive on
+    
+    # Cache CSS and JS for 1 year
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    
+    # Cache images for 1 year  
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    
+    # Cache fonts for 1 year
+    ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType application/font-woff "access plus 1 year"
+    ExpiresByType application/font-woff2 "access plus 1 year"
+    
+    # Cache HTML files for 1 hour (since it's an SPA)
+    ExpiresByType text/html "access plus 1 hour"
+    
+    # Don't cache API responses
+    <LocationMatch "^/api/">
+        ExpiresActive off
+    </LocationMatch>
+</IfModule>
+
+# Security Headers
+<IfModule mod_headers.c>
+    # Prevent clickjacking
+    Header always append X-Frame-Options SAMEORIGIN
+    
+    # XSS Protection
+    Header always set X-XSS-Protection "1; mode=block"
+    
+    # Content Type Options
+    Header always set X-Content-Type-Options nosniff
+    
+    # Referrer Policy
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # Remove Server signature
+    Header always unset Server
+    
+    # CORS headers for API requests
+    <LocationMatch "^/api/">
+        Header always set Access-Control-Allow-Origin "*"
+        Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+        Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+        Header always set Access-Control-Max-Age "86400"
+    </LocationMatch>
+</IfModule>
+
+# Handle OPTIONS requests for CORS preflight
+RewriteCond %{REQUEST_METHOD} ^OPTIONS$
+RewriteRule ^api/ - [R=200,L]
+
+# Error Pages
+ErrorDocument 404 /index.html

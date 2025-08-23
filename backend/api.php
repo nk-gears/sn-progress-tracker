@@ -949,14 +949,26 @@ function handleOnboard() {
         );
 
         if (!$branch) {
-            sendResponse([
-                'success' => false, 
-                'message' => "Branch '$branchName' not found. Please check the branch name."
-            ], 404);
-            return;
+            // Auto-create branch if it doesn't exist
+            $insertResult = executeInsert(
+                "INSERT INTO medt_branches (name, location) VALUES (?, ?)",
+                [$branchName, $branchName . ', Tamil Nadu'],
+                'ss'
+            );
+            
+            if (!$insertResult || !$insertResult['insert_id']) {
+                sendResponse([
+                    'success' => false, 
+                    'message' => "Failed to create branch '$branchName'."
+                ], 500);
+                return;
+            }
+            
+            $branchId = (int)$insertResult['insert_id'];
+            $branch = ['id' => $branchId, 'name' => $branchName];
+        } else {
+            $branchId = (int)$branch['id'];
         }
-
-        $branchId = (int)$branch['id'];
 
         // Check if user already exists
         $existingUser = fetchRow(
