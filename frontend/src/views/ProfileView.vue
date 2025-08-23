@@ -14,7 +14,8 @@
         </div>
       </div>
 
-      <!-- Change Phone Number Section -->
+      <!-- Change Phone Number Section - Hidden -->
+      <!-- 
       <div class="bg-white rounded-xl p-6 shadow-sm">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">Change Phone Number</h3>
         
@@ -86,6 +87,7 @@
           </button>
         </form>
       </div>
+      -->
 
       <!-- Change Password Section -->
       <div class="bg-white rounded-xl p-6 shadow-sm">

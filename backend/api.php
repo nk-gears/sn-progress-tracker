@@ -68,11 +68,15 @@ switch ($endpoint) {
         handleOnboard();
         break;
         
+    case 'bulk-users':
+        handleBulkUsers();
+        break;
+        
     default:
         sendResponse([
             'success' => false,
             'error' => 'Invalid endpoint',
-            'message' => "Endpoint '$endpoint' not found. Available endpoints: auth, participants, sessions, dashboard, profile, onboard",
+            'message' => "Endpoint '$endpoint' not found. Available endpoints: auth, participants, sessions, dashboard, profile, onboard, bulk-users",
             'available_endpoints' => [
                 'POST /api/auth - User authentication',
                 'GET /api/participants - Get participants',
@@ -85,7 +89,8 @@ switch ($endpoint) {
                 'GET /api/dashboard - Get analytics',
                 'PUT /api/profile/phone - Update phone number',
                 'PUT /api/profile/password - Update password',
-                'POST /api/onboard - Onboard new user with branch mapping'
+                'POST /api/onboard - Onboard new user with branch mapping',
+                'POST /api/bulk-users - Bulk create users with branch mapping'
             ]
         ], 404);
 }
@@ -1064,5 +1069,231 @@ function handleOnboard() {
         error_log('Onboard error: ' . $e->getMessage());
         sendResponse(['success' => false, 'message' => 'Failed to onboard user'], 500);
     }
+}
+
+// Bulk Users Creation handler
+function handleBulkUsers() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        sendResponse(['success' => false, 'message' => 'Only POST method allowed'], 405);
+        return;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    
+    // Validate that input is an array of user objects
+    if (!is_array($input) || empty($input)) {
+        sendResponse(['success' => false, 'message' => 'Input must be a non-empty array of user objects'], 400);
+        return;
+    }
+
+    $results = [
+        'success' => true,
+        'processed' => 0,
+        'created_users' => 0,
+        'updated_users' => 0,
+        'skipped_users' => 0,
+        'created_branches' => 0,
+        'errors' => []
+    ];
+
+    // Process each user in the array
+    foreach ($input as $index => $userData) {
+        try {
+            $userResult = processBulkUser($userData, $index);
+            
+            // Update counters based on result
+            if ($userResult['success']) {
+                $results['processed']++;
+                
+                if ($userResult['user_action'] === 'created') {
+                    $results['created_users']++;
+                } elseif ($userResult['user_action'] === 'updated') {
+                    $results['updated_users']++;
+                } else {
+                    $results['skipped_users']++;
+                }
+                
+                $results['created_branches'] += $userResult['created_branches'];
+            } else {
+                $results['errors'][] = "User #{$index}: " . $userResult['message'];
+            }
+            
+        } catch (Exception $e) {
+            $results['errors'][] = "User #{$index}: " . $e->getMessage();
+            error_log("Bulk user processing error for user #{$index}: " . $e->getMessage());
+        }
+    }
+
+    // Determine overall success
+    $results['success'] = $results['processed'] > 0 || empty($results['errors']);
+    $results['message'] = sprintf(
+        'Processed %d/%d users. Created: %d, Updated: %d, Skipped: %d, New branches: %d',
+        $results['processed'],
+        count($input),
+        $results['created_users'],
+        $results['updated_users'],
+        $results['skipped_users'],
+        $results['created_branches']
+    );
+
+    sendResponse($results);
+}
+
+// Process a single user in the bulk operation
+function processBulkUser($userData, $index) {
+    // Validate required fields for each user
+    $missing = validateRequired($userData, ['username', 'mobile_number', 'default_password', 'branch_names']);
+    
+    if (!empty($missing)) {
+        return [
+            'success' => false,
+            'message' => 'Missing required fields: ' . implode(', ', $missing)
+        ];
+    }
+
+    $username = trim($userData['username']);
+    $mobileNumber = trim($userData['mobile_number']);
+    $defaultPassword = $userData['default_password'];
+    $branchNames = $userData['branch_names'];
+
+    // Validate mobile number format
+    if (!preg_match('/^\d{10}$/', $mobileNumber)) {
+        return [
+            'success' => false,
+            'message' => 'Mobile number must be exactly 10 digits'
+        ];
+    }
+
+    // Validate password length
+    if (strlen($defaultPassword) < 6) {
+        return [
+            'success' => false,
+            'message' => 'Password must be at least 6 characters long'
+        ];
+    }
+
+    // Validate branch_names is an array
+    if (!is_array($branchNames) || empty($branchNames)) {
+        return [
+            'success' => false,
+            'message' => 'branch_names must be a non-empty array'
+        ];
+    }
+
+    $result = [
+        'success' => true,
+        'user_action' => 'skipped',
+        'created_branches' => 0,
+        'branch_mappings' => []
+    ];
+
+    // Check if user already exists
+    $existingUser = fetchRow(
+        "SELECT id, name, mobile FROM medt_users WHERE mobile = ?",
+        [$mobileNumber],
+        's'
+    );
+
+    $userId = null;
+    
+    if ($existingUser) {
+        // User exists - check if we need to update name
+        $userId = (int)$existingUser['id'];
+        
+        if ($username !== $existingUser['name']) {
+            // Update user's name
+            executeQuery(
+                "UPDATE medt_users SET name = ? WHERE id = ?",
+                [$username, $userId],
+                'si'
+            );
+            $result['user_action'] = 'updated';
+        } else {
+            $result['user_action'] = 'existed';
+        }
+    } else {
+        // Create new user
+        $hashedPassword = password_hash($defaultPassword, PASSWORD_DEFAULT);
+        
+        $insertResult = executeInsert(
+            "INSERT INTO medt_users (name, mobile, password) VALUES (?, ?, ?)",
+            [$username, $mobileNumber, $hashedPassword],
+            'sss'
+        );
+        
+        if (!$insertResult || !$insertResult['insert_id']) {
+            return [
+                'success' => false,
+                'message' => 'Failed to create user'
+            ];
+        }
+        
+        $userId = (int)$insertResult['insert_id'];
+        $result['user_action'] = 'created';
+    }
+
+    // Process branch mappings
+    foreach ($branchNames as $branchName) {
+        $branchName = trim($branchName);
+        
+        if (empty($branchName)) {
+            continue;
+        }
+
+        // Find or create branch
+        $branch = fetchRow(
+            "SELECT id FROM medt_branches WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1",
+            [$branchName],
+            's'
+        );
+
+        $branchId = null;
+        
+        if (!$branch) {
+            // Create new branch
+            $branchInsertResult = executeInsert(
+                "INSERT INTO medt_branches (name, location) VALUES (?, ?)",
+                [$branchName, $branchName . ', Tamil Nadu'],
+                'ss'
+            );
+            
+            if (!$branchInsertResult || !$branchInsertResult['insert_id']) {
+                continue; // Skip this branch if creation failed
+            }
+            
+            $branchId = (int)$branchInsertResult['insert_id'];
+            $result['created_branches']++;
+        } else {
+            $branchId = (int)$branch['id'];
+        }
+
+        // Check if user-branch mapping already exists
+        $existingMapping = fetchRow(
+            "SELECT id FROM medt_user_branches WHERE user_id = ? AND branch_id = ?",
+            [$userId, $branchId],
+            'ii'
+        );
+
+        if (!$existingMapping) {
+            // Create user-branch mapping
+            executeInsert(
+                "INSERT INTO medt_user_branches (user_id, branch_id) VALUES (?, ?)",
+                [$userId, $branchId],
+                'ii'
+            );
+            
+            $result['branch_mappings'][] = [
+                'branch_name' => $branchName,
+                'action' => 'mapped'
+            ];
+        } else {
+            $result['branch_mappings'][] = [
+                'branch_name' => $branchName,
+                'action' => 'existed'
+            ];
+        }
+    }
+
+    return $result;
 }
 ?>
