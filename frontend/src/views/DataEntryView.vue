@@ -507,8 +507,8 @@ watch(() => sessionForm.value.session_date, (newDate) => {
 })
 
 
-// Lifecycle
-onMounted(async () => {
+// Load initial data
+const loadData = async () => {
   // Load dashboard data for metrics
   await sessionsStore.loadDashboardData()
   
@@ -517,5 +517,22 @@ onMounted(async () => {
   
   // Set initial duration from ranges
   currentDuration.value = selectedTimeRanges.value.totalDuration
+}
+
+// Lifecycle
+onMounted(async () => {
+  await loadData()
 })
+
+// Watch for branch changes
+watch(() => authStore.currentBranch, (newBranch, oldBranch) => {
+  if (newBranch && newBranch.id !== oldBranch?.id) {
+    // Clear form and reload data when branch changes
+    sessionsStore.clearForm()
+    selectedParticipant.value = null
+    selectedTimeRanges.value = { ranges: [], totalDuration: 0 }
+    lastSessionInfo.value = ''
+    loadData()
+  }
+}, { immediate: false })
 </script>
