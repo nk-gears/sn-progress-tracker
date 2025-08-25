@@ -50,11 +50,11 @@
 
           <!-- Time Slot Selector Component - Show when participant name is entered -->
           <div v-if="sessionForm.participant_name.trim().length > 0">
-            <!-- Last session info message -->
-            <div v-if="lastSessionInfo" class="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
+            <!-- Last session info message - TEMPORARILY HIDDEN -->
+            <!-- <div v-if="lastSessionInfo" class="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
               {{ lastSessionInfo }}
               <span class="block text-xs text-green-600 mt-1">You can adjust the time if needed</span>
-            </div>
+            </div> -->
             
             <TimeSlotSelector
               v-model="selectedTimeRanges"
@@ -301,8 +301,9 @@ const handleParticipantSelected = async (participant: Participant | null) => {
     return
   }
   
+  // TEMPORARILY DISABLED: Pre-fill functionality
   // For existing participants with an ID, fetch last session and pre-populate time
-  const branchId = authStore.currentBranch?.id
+  /* const branchId = authStore.currentBranch?.id
   if (branchId && participant.id) {
     try {
       const response = await apiService.participants.getLastSession(participant.id, branchId)
@@ -346,7 +347,11 @@ const handleParticipantSelected = async (participant: Participant | null) => {
     // For new participants (no ID yet), clear time selection and last session info
     selectedTimeRanges.value = { ranges: [], totalDuration: 0 }
     lastSessionInfo.value = ''
-  }
+  } */
+  
+  // Always clear time selection when participant is selected
+  selectedTimeRanges.value = { ranges: [], totalDuration: 0 }
+  lastSessionInfo.value = ''
 }
 
 const handleDurationChanged = (duration: number) => {

@@ -14,7 +14,8 @@
       "Bash(pnpm add:*)",
       "Bash(npm run preview:*)",
       "Bash(lsof:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "WebFetch(domain:happy-village.org)"
     ],
     "deny": []
   }

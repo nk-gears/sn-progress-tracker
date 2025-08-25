@@ -73,16 +73,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseLayout from '@/components/BaseLayout.vue'
 import { useSessionsStore } from '@/stores/sessions'
 import { useAppStore } from '@/stores/app'
+import { useAuthStore } from '@/stores/auth'
 import type { Session } from '@/types'
 
 const router = useRouter()
 const sessionsStore = useSessionsStore()
 const appStore = useAppStore()
+const authStore = useAuthStore()
 
 // Computed properties
 const dashboardData = computed(() => sessionsStore.dashboardData)
@@ -151,4 +153,11 @@ const loadData = async () => {
 onMounted(() => {
   loadData()
 })
+
+// Watch for branch changes
+watch(() => authStore.currentBranch, (newBranch, oldBranch) => {
+  if (newBranch && newBranch.id !== oldBranch?.id) {
+    loadData()
+  }
+}, { immediate: false })
 </script>

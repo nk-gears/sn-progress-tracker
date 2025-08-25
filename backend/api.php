@@ -49,6 +49,7 @@ switch ($endpoint) {
         break;
         
     case 'participants':
+    case 'members':
         handleParticipants();
         break;
         
@@ -57,6 +58,7 @@ switch ($endpoint) {
         break;
         
     case 'dashboard':
+    case 'stats':
         handleDashboard();
         break;
         

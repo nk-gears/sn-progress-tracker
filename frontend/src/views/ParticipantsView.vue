@@ -303,7 +303,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import BaseLayout from '@/components/BaseLayout.vue'
 import { useParticipantsStore } from '@/stores/participants'
 import { useAuthStore } from '@/stores/auth'
@@ -535,4 +535,11 @@ const loadData = async () => {
 onMounted(() => {
   loadData()
 })
+
+// Watch for branch changes
+watch(() => authStore.currentBranch, (newBranch, oldBranch) => {
+  if (newBranch && newBranch.id !== oldBranch?.id) {
+    loadData()
+  }
+}, { immediate: false })
 </script>

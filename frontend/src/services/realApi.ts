@@ -81,7 +81,7 @@ export const realApi = {
           ...(search && { search })
         })
 
-        const response = await apiRequest(`participants?${params}`)
+        const response = await apiRequest(`members?${params}`)
         const data = await response.json()
 
         if (!response.ok) {
@@ -109,7 +109,7 @@ export const realApi = {
           action: 'search'
         })
 
-        const response = await apiRequest(`participants?${params}`)
+        const response = await apiRequest(`members?${params}`)
         const data = await response.json()
 
         if (!response.ok) {
@@ -131,7 +131,7 @@ export const realApi = {
 
     async create(participantData: ParticipantForm): Promise<ParticipantResponse> {
       try {
-        const response = await apiRequest('participants', {
+        const response = await apiRequest('members', {
           method: 'POST',
           body: JSON.stringify(participantData)
         })
@@ -157,7 +157,7 @@ export const realApi = {
 
     async update(id: number, data: Partial<Participant>): Promise<ParticipantResponse> {
       try {
-        const response = await apiRequest('participants', {
+        const response = await apiRequest('members', {
           method: 'PUT',
           body: JSON.stringify({ id, ...data })
         })
@@ -183,7 +183,7 @@ export const realApi = {
 
     async findOrCreate(name: string, branchId: number, age?: number, gender?: string): Promise<ParticipantResponse> {
       try {
-        const response = await apiRequest('participants', {
+        const response = await apiRequest('members', {
           method: 'POST',
           body: JSON.stringify({
             action: 'findOrCreate',
@@ -221,7 +221,7 @@ export const realApi = {
           branch_id: branchId.toString()
         })
 
-        const response = await apiRequest(`participants?${params}`)
+        const response = await apiRequest(`members?${params}`)
         const data = await response.json()
 
         if (!response.ok) {
@@ -360,7 +360,8 @@ export const realApi = {
           month
         })
 
-        const response = await apiRequest(`dashboard?${params}`)
+        // Use stats endpoint to avoid WordPress dashboard conflicts
+        const response = await apiRequest(`stats?${params}`)
         const data = await response.json()
 
         if (!response.ok) {

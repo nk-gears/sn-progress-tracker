@@ -284,7 +284,7 @@ else
             fi
             
             # Upload the file
-            if ! curl --ftp-create-dirs \
+            if ! curl -s --ftp-create-dirs \
                       -T "$file" \
                       "ftp://$ENCODED_USER:$ENCODED_PASS@$FTP_HOST$remote_path"; then
                 echo -e "${RED}Failed to upload: $relative_path${NC}"
