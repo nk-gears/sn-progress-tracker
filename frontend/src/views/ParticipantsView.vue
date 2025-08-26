@@ -497,20 +497,14 @@ const deleteParticipant = async () => {
   isDeleting.value = true
   
   try {
-    // Note: This requires implementing deleteParticipant in the store
-    // For now, we'll show an error message
-    appStore.showError('Delete functionality not yet implemented in the backend')
-    closeDeleteModal()
-    
-    // When implemented, it would look like:
-    // const success = await participantsStore.deleteParticipant(deletingParticipant.value.id)
-    // if (success) {
-    //   appStore.showSuccess('Participant deleted successfully!')
-    //   closeDeleteModal()
-    //   await loadData()
-    // } else {
-    //   appStore.showError('Failed to delete participant')
-    // }
+    const success = await participantsStore.deleteParticipant(deletingParticipant.value.id)
+    if (success) {
+      appStore.showSuccess('Participant deleted successfully!')
+      closeDeleteModal()
+      await loadData()
+    } else {
+      appStore.showError('Failed to delete participant')
+    }
   } catch (error) {
     console.error('Delete participant error:', error)
     appStore.showError('An error occurred while deleting the participant')

@@ -27,9 +27,9 @@ try {
         sendResponse(['success' => false, 'message' => 'Invalid credentials'], 401);
     }
 
-    // if (!password_verify($password, $user['password'])) {
-    //     sendResponse(['success' => false, 'message' => 'Invalid credentials'], 401);
-    // }
+    if (!password_verify($password, $user['password'])) {
+        sendResponse(['success' => false, 'message' => 'Invalid credentials'], 401);
+    }
 
     // Get user's branches
     $branches = fetchAll("

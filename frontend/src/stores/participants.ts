@@ -141,6 +141,31 @@ export const useParticipantsStore = defineStore('participants', () => {
     return false
   }
   
+  const deleteParticipant = async (id: number): Promise<boolean> => {
+    try {
+      const response = await apiService.participants.delete(id)
+      
+      if (response.success) {
+        // Remove from local participants list
+        const index = participants.value.findIndex(p => p.id === id)
+        if (index >= 0) {
+          participants.value.splice(index, 1)
+        }
+        
+        // Clear selected participant if it's the deleted one
+        if (selectedParticipant.value?.id === id) {
+          selectedParticipant.value = null
+        }
+        
+        return true
+      }
+    } catch (error) {
+      console.error('Error deleting participant:', error)
+    }
+    
+    return false
+  }
+  
   const findOrCreateParticipant = async (name: string, age?: number, gender?: string): Promise<Participant | null> => {
     // First check if participant already exists
     const existing = participants.value.find(p => 
@@ -206,6 +231,7 @@ export const useParticipantsStore = defineStore('participants', () => {
     selectParticipant,
     createParticipant,
     updateParticipant,
+    deleteParticipant,
     findOrCreateParticipant,
     clearSearch,
     resetStore

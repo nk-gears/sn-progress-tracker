@@ -170,6 +170,13 @@ class ApiService {
         () => realApi.participants.getLastSession(participantId, branchId),
         () => mockApi.participants.getLastSession(participantId, branchId)
       )
+    },
+
+    delete: async (id: number): Promise<ParticipantResponse> => {
+      return this.callWithFallback(
+        () => realApi.participants.delete(id),
+        () => mockApi.participants.delete(id)
+      )
     }
   }
 

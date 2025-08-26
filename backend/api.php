@@ -125,10 +125,9 @@ function handleAuth() {
             sendResponse(['success' => false, 'message' => 'Invalid credentials'], 401);
         }
 
-        // Note: Password verification is commented out for testing
-        // if (!password_verify($password, $user['password'])) {
-        //     sendResponse(['success' => false, 'message' => 'Invalid credentials'], 401);
-        // }
+        if (!password_verify($password, $user['password'])) {
+            sendResponse(['success' => false, 'message' => 'Invalid credentials'], 401);
+        }
 
         // Get user's branches
         $branches = fetchAll("
@@ -409,6 +408,31 @@ function handleParticipants() {
         } catch (Exception $e) {
             error_log('Participants PUT error: ' . $e->getMessage());
             sendResponse(['success' => false, 'message' => 'Failed to update participant'], 500);
+        }
+
+    } elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+        $participant_id = $_GET['id'] ?? null;
+
+        if (!$participant_id) {
+            sendResponse(['success' => false, 'message' => 'Participant ID is required'], 400);
+        }
+
+        try {
+            // First, delete all sessions for this participant
+            executeQuery("DELETE FROM medt_meditation_sessions WHERE participant_id = ?", [(int)$participant_id], 'i');
+
+            // Then delete the participant
+            executeQuery("DELETE FROM medt_participants WHERE id = ?", [(int)$participant_id], 'i');
+
+            global $mysqli;
+            if ($mysqli->affected_rows === 0) {
+                sendResponse(['success' => false, 'message' => 'Participant not found'], 404);
+            }
+
+            sendResponse(['success' => true, 'message' => 'Participant and all related sessions deleted successfully']);
+        } catch (Exception $e) {
+            error_log('Participants DELETE error: ' . $e->getMessage());
+            sendResponse(['success' => false, 'message' => 'Failed to delete participant'], 500);
         }
 
     } else {
@@ -807,10 +831,9 @@ function handlePhoneUpdate($input) {
             sendResponse(['success' => false, 'message' => 'User not found'], 404);
         }
 
-        // Note: Password verification is commented out for testing
-        // if (!password_verify($currentPassword, $user['password'])) {
-        //     sendResponse(['success' => false, 'message' => 'Current password is incorrect'], 400);
-        // }
+        if (!password_verify($currentPassword, $user['password'])) {
+            sendResponse(['success' => false, 'message' => 'Current password is incorrect'], 400);
+        }
 
         // Check if new phone number is already in use
         $existingUser = fetchRow(
@@ -883,10 +906,9 @@ function handlePasswordUpdate($input) {
             sendResponse(['success' => false, 'message' => 'User not found'], 404);
         }
 
-        // Note: Password verification is commented out for testing
-        // if (!password_verify($currentPassword, $user['password'])) {
-        //     sendResponse(['success' => false, 'message' => 'Current password is incorrect'], 400);
-        // }
+        if (!password_verify($currentPassword, $user['password'])) {
+            sendResponse(['success' => false, 'message' => 'Current password is incorrect'], 400);
+        }
 
         // Hash new password
         $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);

@@ -36,6 +36,7 @@
               type="date"
               required
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+              :min="minDate"
               :max="today"
             >
           </div>
@@ -43,13 +44,11 @@
           <!-- Participant Input Component -->
           <ParticipantInput
             v-model="sessionForm.participant_name"
-            v-model:age="sessionForm.participant_age"
-            v-model:gender="sessionForm.participant_gender"
             @participant-selected="handleParticipantSelected"
           />
 
-          <!-- Time Slot Selector Component - Show when participant name is entered -->
-          <div v-if="sessionForm.participant_name.trim().length > 0">
+          <!-- Time Slot Selector Component - Show when participant is selected -->
+          <div v-if="selectedParticipant">
             <!-- Last session info message - TEMPORARILY HIDDEN -->
             <!-- <div v-if="lastSessionInfo" class="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
               {{ lastSessionInfo }}
@@ -62,15 +61,15 @@
             />
           </div>
 
-          <!-- Message when no participant name is entered -->
-          <div v-if="sessionForm.participant_name.trim().length === 0" class="p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-center">
+          <!-- Message when no participant is selected -->
+          <div v-if="!selectedParticipant" class="p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-center">
             <div class="flex items-center justify-center mb-2">
               <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
-              <span class="font-medium">Please select or enter a participant first</span>
+              <span class="font-medium">Please select a participant first</span>
             </div>
-            <p class="text-sm text-blue-600">Start typing a name above to search for existing participants or add a new one</p>
+            <p class="text-sm text-blue-600">Start typing a name above to search and select from existing participants</p>
           </div>
 
           <!-- Error Display -->
@@ -186,6 +185,7 @@ const selectedTimeRanges = computed({
   }
 })
 const today = computed(() => new Date().toISOString().slice(0, 10))
+const minDate = computed(() => '2025-08-25')
 
 // Metrics computed properties
 const totalHours = computed(() => {
@@ -238,7 +238,8 @@ const totalSessionHours = computed(() => {
 
 const isFormValid = computed(() => {
   return (
-    sessionForm.value.participant_name.trim().length > 0 &&
+    sessionForm.value.session_date >= minDate.value &&
+    selectedParticipant.value !== null &&
     selectedTimeRanges.value.ranges.length > 0 &&
     selectedTimeRanges.value.totalDuration >= 30 &&
     [30, 60, 90, 120].includes(selectedTimeRanges.value.totalDuration)
@@ -362,6 +363,18 @@ const handleSubmit = async () => {
   error.value = ''
   success.value = ''
   
+  // Validate date range
+  if (sessionForm.value.session_date < minDate.value) {
+    error.value = 'Session date cannot be earlier than August 25, 2025'
+    return
+  }
+  
+  // Validate participant selection
+  if (!selectedParticipant.value) {
+    error.value = 'Please select an existing participant from the list'
+    return
+  }
+  
   if (selectedTimeRanges.value.ranges.length === 0 || selectedTimeRanges.value.totalDuration < 30) {
     error.value = 'Please select valid time ranges (minimum 30 minutes total)'
     return
@@ -384,15 +397,11 @@ const handleSubmit = async () => {
   appStore.setLoading(true)
   
   try {
-    // Find or create participant
-    const participant = await participantsStore.findOrCreateParticipant(
-      sessionForm.value.participant_name,
-      sessionForm.value.participant_age || undefined,
-      sessionForm.value.participant_gender || undefined
-    )
+    // Use the selected participant (no need to find or create)
+    const participant = selectedParticipant.value
     
     if (!participant) {
-      error.value = 'Failed to create or find participant'
+      error.value = 'Please select a valid participant'
       return
     }
     

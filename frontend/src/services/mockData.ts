@@ -138,6 +138,24 @@ export const updateParticipant = (id: number, data: Partial<Participant>): boole
   return false
 }
 
+export const deleteParticipant = (id: number): boolean => {
+  // First, delete all sessions for this participant
+  const sessionIndices = mockSessions
+    .map((session, index) => session.participant_id === id ? index : -1)
+    .filter(index => index !== -1)
+    .reverse() // Reverse to delete from end to avoid index shifting
+  
+  sessionIndices.forEach(index => mockSessions.splice(index, 1))
+  
+  // Then delete the participant
+  const participantIndex = mockParticipants.findIndex(p => p.id === id)
+  if (participantIndex >= 0) {
+    mockParticipants.splice(participantIndex, 1)
+    return true
+  }
+  return false
+}
+
 export const addSession = (session: Omit<Session, 'id' | 'created_at'>): Session => {
   const newSession: Session = {
     ...session,

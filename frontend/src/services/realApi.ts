@@ -239,6 +239,35 @@ export const realApi = {
           message: 'Network error. Please check your connection.'
         }
       }
+    },
+
+    async delete(id: number): Promise<ParticipantResponse> {
+      try {
+        const params = new URLSearchParams({
+          id: id.toString()
+        })
+
+        const response = await apiRequest(`members?${params}`, {
+          method: 'DELETE'
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          return {
+            success: false,
+            message: data.message || data.error || 'Failed to delete participant'
+          }
+        }
+
+        return data
+      } catch (error) {
+        console.error('Delete participant API error:', error)
+        return {
+          success: false,
+          message: 'Network error. Please check your connection.'
+        }
+      }
     }
   },
 

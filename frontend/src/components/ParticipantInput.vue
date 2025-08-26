@@ -15,19 +15,22 @@
           required
           placeholder="Enter participant name"
           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-          :class="{ 'border-green-300': selectedParticipant && !isNewParticipant }"
+          :class="{ 
+            'border-green-300': selectedParticipant,
+            'border-red-300': localParticipantName.length > 1 && !selectedParticipant
+          }"
         >
         
         <!-- Participant status indicator -->
         <div v-if="localParticipantName.length > 1" class="absolute right-3 top-1/2 transform -translate-y-1/2">
-          <div v-if="selectedParticipant && !isNewParticipant" class="text-green-600">
+          <div v-if="selectedParticipant" class="text-green-600">
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
             </svg>
           </div>
-          <div v-else-if="isNewParticipant" class="text-blue-600">
+          <div v-else class="text-red-600">
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path>
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
             </svg>
           </div>
         </div>
@@ -56,66 +59,22 @@
       
       <!-- Status message -->
       <div v-if="localParticipantName.length > 1" class="mt-1 text-sm">
-        <div v-if="selectedParticipant && !isNewParticipant" class="text-green-700 flex items-center">
+        <div v-if="selectedParticipant" class="text-green-700 flex items-center">
           <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
           </svg>
-          Existing participant selected
+          Participant selected: {{ selectedParticipant.name }}
+          <span v-if="selectedParticipant.age" class="ml-1">({{ selectedParticipant.age }} years)</span>
         </div>
-        <div v-else-if="isNewParticipant" class="text-blue-700 flex items-center">
+        <div v-else class="text-red-700 flex items-center">
           <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path>
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
           </svg>
-          New participant - please add details below
+          Please select an existing participant from the list
         </div>
       </div>
     </div>
 
-    <!-- Age and Gender - Show conditionally -->
-    <div v-if="showAgeGenderFields" class="grid grid-cols-2 gap-3">
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
-          Age
-          <span v-if="isNewParticipant" class="text-green-600 text-xs">(New)</span>
-          <span v-else-if="selectedParticipant" class="text-blue-600 text-xs">(Edit)</span>
-        </label>
-        <input
-          v-model.number="localAge"
-          @input="handleAgeChange"
-          type="number"
-          min="1"
-          max="120"
-          placeholder="Age"
-          :disabled="selectedParticipant && selectedParticipant.age"
-          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-          :class="{
-            'bg-gray-100 cursor-not-allowed': selectedParticipant && selectedParticipant.age
-          }"
-        >
-      </div>
-      
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
-          Gender
-          <span v-if="isNewParticipant" class="text-green-600 text-xs">(New)</span>
-          <span v-else-if="selectedParticipant" class="text-blue-600 text-xs">(Edit)</span>
-        </label>
-        <select
-          v-model="localGender"
-          @change="handleGenderChange"
-          :disabled="selectedParticipant && selectedParticipant.gender"
-          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-          :class="{
-            'bg-gray-100 cursor-not-allowed': selectedParticipant && selectedParticipant.gender
-          }"
-        >
-          <option value="">Select</option>
-          <option value="Male">Male</option>
-          <option value="Female">Female</option>
-          <option value="Other">Other</option>
-        </select>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -128,14 +87,10 @@ import type { Participant } from '@/types'
 // Props and emits
 interface Props {
   modelValue: string
-  age: number | null
-  gender: string | null
 }
 
 interface Emits {
   (e: 'update:modelValue', value: string): void
-  (e: 'update:age', value: number | null): void
-  (e: 'update:gender', value: string | null): void
   (e: 'participant-selected', participant: Participant | null): void
 }
 
@@ -147,19 +102,12 @@ const authStore = useAuthStore()
 
 // Local reactive state
 const localParticipantName = ref(props.modelValue)
-const localAge = ref(props.age)
-const localGender = ref(props.gender)
 const showSuggestions = ref(false)
 const inputFocused = ref(false)
 
 // Computed properties
 const participantSuggestions = computed(() => participantsStore.participantSuggestions)
 const selectedParticipant = computed(() => participantsStore.selectedParticipant)
-const isNewParticipant = computed(() => participantsStore.isNewParticipant)
-
-const showAgeGenderFields = computed(() => {
-  return localParticipantName.value.length > 1 && isNewParticipant.value
-})
 
 // Methods
 const handleInput = async () => {
@@ -171,12 +119,8 @@ const handleInput = async () => {
   await participantsStore.searchParticipants(localParticipantName.value, branchId)
   showSuggestions.value = inputFocused.value && participantSuggestions.value.length > 0
   
-  // Update form data based on search results
+  // Only emit participant if there's an exact match
   if (selectedParticipant.value) {
-    localAge.value = selectedParticipant.value.age
-    localGender.value = selectedParticipant.value.gender
-    emit('update:age', selectedParticipant.value.age)
-    emit('update:gender', selectedParticipant.value.gender)
     emit('participant-selected', selectedParticipant.value)
   } else {
     emit('participant-selected', null)
@@ -201,23 +145,12 @@ const handleBlur = () => {
 const selectParticipant = (participant: Participant) => {
   participantsStore.selectParticipant(participant)
   localParticipantName.value = participant.name
-  localAge.value = participant.age
-  localGender.value = participant.gender
   showSuggestions.value = false
   
   emit('update:modelValue', participant.name)
-  emit('update:age', participant.age)
-  emit('update:gender', participant.gender)
   emit('participant-selected', participant)
 }
 
-const handleAgeChange = () => {
-  emit('update:age', localAge.value)
-}
-
-const handleGenderChange = () => {
-  emit('update:gender', localGender.value)
-}
 
 const handleClickOutside = (event: Event) => {
   const target = event.target as HTMLElement
@@ -230,18 +163,6 @@ const handleClickOutside = (event: Event) => {
 watch(() => props.modelValue, (newValue) => {
   if (newValue !== localParticipantName.value) {
     localParticipantName.value = newValue
-  }
-})
-
-watch(() => props.age, (newValue) => {
-  if (newValue !== localAge.value) {
-    localAge.value = newValue
-  }
-})
-
-watch(() => props.gender, (newValue) => {
-  if (newValue !== localGender.value) {
-    localGender.value = newValue
   }
 })
 

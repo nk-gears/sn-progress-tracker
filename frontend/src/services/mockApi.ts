@@ -204,6 +204,34 @@ export const mockApi = {
           session_date: lastSession.session_date
         } : null
       }
+    },
+
+    async delete(id: number): Promise<ParticipantResponse> {
+      await simulateDelay()
+      
+      // Import the deleteParticipant function from mockData
+      const { deleteParticipant: deleteParticipantFromMock } = await import('./mockData')
+      
+      try {
+        const success = deleteParticipantFromMock(id)
+        
+        if (success) {
+          return {
+            success: true,
+            message: 'Participant and all related sessions deleted successfully'
+          }
+        } else {
+          return {
+            success: false,
+            message: 'Participant not found'
+          }
+        }
+      } catch (error) {
+        return {
+          success: false,
+          message: 'Failed to delete participant'
+        }
+      }
     }
   },
   
