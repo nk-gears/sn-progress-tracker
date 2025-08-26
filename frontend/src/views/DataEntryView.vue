@@ -129,7 +129,7 @@
             </div>
             <div class="flex items-center space-x-2">
               <div class="text-xs text-gray-500">
-                {{ new Date(session.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) }}
+                {{ formatTimestamp(session.created_at) }}
               </div>
               <button
                 @click="deleteSession(session)"
@@ -248,6 +248,7 @@ const isFormValid = computed(() => {
 
 // Methods
 const formatTime = (time: string) => sessionsStore.formatTime(time)
+const formatTimestamp = (timestamp: string) => sessionsStore.formatTimestamp(timestamp)
 
 const getTimeOnly = (time: string): string => {
   const formatted = sessionsStore.formatTime(time)
@@ -266,7 +267,10 @@ const loadSessionsForDate = async (date: string) => {
   try {
     const response = await apiService.sessions.getByDate(branchId, date)
     if (response.success) {
-      dateSessionsList.value = response.sessions || []
+      // Sort sessions in descending order by start time (latest first)
+      dateSessionsList.value = (response.sessions || []).sort((a, b) => {
+        return b.start_time.localeCompare(a.start_time)
+      })
     }
   } catch (error) {
     console.error('Error loading sessions for date:', error)
@@ -461,8 +465,9 @@ const handleSubmit = async () => {
       const rangeCount = createdSessions.length
       success_msg = `${rangeCount > 1 ? rangeCount + ' sessions' : 'Session'} recorded successfully!`
       
-      // Add new sessions to local list
-      dateSessionsList.value.unshift(...createdSessions)
+      // Add new sessions to local list and sort by start time (descending)
+      dateSessionsList.value.push(...createdSessions)
+      dateSessionsList.value.sort((a, b) => b.start_time.localeCompare(a.start_time))
     }
     
     // Handle mixed results (some successful, some duplicates)

@@ -75,6 +75,14 @@ export const useSessionsStore = defineStore('sessions', () => {
     return `${displayHour}:${minutes} ${ampm}`
   }
   
+  const formatTimestamp = (timestamp: string): string => {
+    return new Date(timestamp).toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZone: 'Asia/Kolkata'
+    })
+  }
+  
   // Actions
   const loadTodaySessions = async () => {
     const authStore = useAuthStore()
@@ -281,6 +289,7 @@ export const useSessionsStore = defineStore('sessions', () => {
     
     // Helper functions
     formatTime,
+    formatTimestamp,
     timeToMinutes,
     minutesToTime,
     
