@@ -128,7 +128,7 @@
               </div>
             </div>
             <div class="flex items-center space-x-2">
-              <div class="text-xs text-gray-500">
+              <div class="text-xs text-gray-500 hidden">
                 {{ formatTimestamp(session.created_at) }}
               </div>
               <button
@@ -242,7 +242,7 @@ const isFormValid = computed(() => {
     selectedParticipant.value !== null &&
     selectedTimeRanges.value.ranges.length > 0 &&
     selectedTimeRanges.value.totalDuration >= 30 &&
-    [30, 60, 90, 120].includes(selectedTimeRanges.value.totalDuration)
+    selectedTimeRanges.value.totalDuration <= 960 && selectedTimeRanges.value.totalDuration % 30 === 0
   )
 })
 
@@ -384,8 +384,8 @@ const handleSubmit = async () => {
     return
   }
   
-  if (![30, 60, 90, 120].includes(selectedTimeRanges.value.totalDuration)) {
-    error.value = 'Total duration must be exactly 30, 60, 90, or 120 minutes'
+  if (selectedTimeRanges.value.totalDuration > 960 || selectedTimeRanges.value.totalDuration % 30 !== 0) {
+    error.value = 'Total duration must be between 30 and 960 minutes in 30-minute increments'
     return
   }
   

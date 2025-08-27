@@ -54,7 +54,7 @@ CREATE TABLE medt_meditation_sessions (
     volunteer_id INT NOT NULL,
     session_date DATE NOT NULL,
     start_time TIME NOT NULL,
-    duration_minutes INT NOT NULL CHECK (duration_minutes IN (30, 60, 90, 120)),
+    duration_minutes INT NOT NULL CHECK (duration_minutes >= 30 AND duration_minutes <= 960 AND duration_minutes % 30 = 0),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (participant_id) REFERENCES medt_participants(id) ON DELETE CASCADE,

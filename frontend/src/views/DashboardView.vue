@@ -39,6 +39,22 @@
         </div>
       </div>
 
+      <!-- Export Button -->
+      <div v-if="!isLoading && dashboardData?.summary?.total_sessions" class="card p-4">
+        <button 
+          @click="exportSessionDetails" 
+          :disabled="isExporting"
+          class="w-full btn-primary flex items-center justify-center space-x-2"
+        >
+          <svg v-if="!isExporting" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-4-4m4 4l4-4m-6 4V6a2 2 0 112 0v10.586a2 2 0 01-2-2z"></path>
+          </svg>
+          <svg v-else class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          <span>{{ isExporting ? 'Exporting...' : 'Export Session Details' }}</span>
+        </button>
+      </div>
 
       <!-- Empty State -->
       <div v-if="!isLoading && !dashboardData?.summary?.total_sessions" class="text-center py-12">
@@ -73,18 +89,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, watch, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseLayout from '@/components/BaseLayout.vue'
 import { useSessionsStore } from '@/stores/sessions'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import type { Session } from '@/types'
+import { apiService } from '@/services/apiService'
 
 const router = useRouter()
 const sessionsStore = useSessionsStore()
 const appStore = useAppStore()
 const authStore = useAuthStore()
+
+// Export state
+const isExporting = ref(false)
 
 // Computed properties
 const dashboardData = computed(() => sessionsStore.dashboardData)
@@ -146,6 +166,89 @@ const loadData = async () => {
     appStore.showError('Failed to load dashboard data')
   } finally {
     sessionsStore.isLoading = false
+  }
+}
+
+const exportSessionDetails = async () => {
+  const branchId = authStore.currentBranch?.id
+  if (!branchId) {
+    appStore.showError('No branch selected')
+    return
+  }
+
+  isExporting.value = true
+  try {
+    console.log('Starting export for branch:', branchId)
+    
+    // Fetch all sessions for the branch
+    const response = await apiService.sessions.getAll(branchId)
+    console.log('API response:', response)
+    
+    if (response.success && response.sessions) {
+      const sessions = response.sessions
+      console.log('Sessions found:', sessions.length)
+      
+      if (sessions.length === 0) {
+        appStore.showError('No sessions found to export')
+        return
+      }
+      
+      // Prepare CSV data
+      const csvHeaders = ['Participant Name', 'Date', 'Start Time', 'End Time', 'Duration (minutes)']
+      const csvRows = sessions.map(session => {
+        const startTime = session.start_time
+        const durationMinutes = session.duration_minutes
+        const [hours, minutes] = startTime.split(':').map(Number)
+        const endMinutes = hours * 60 + minutes + durationMinutes
+        const endHours = Math.floor(endMinutes / 60) % 24 // Handle overflow past midnight
+        const endMins = endMinutes % 60
+        const endTime = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`
+        
+        return [
+          session.participant_name || 'Unknown',
+          session.session_date,
+          startTime,
+          endTime,
+          durationMinutes.toString()
+        ]
+      })
+      
+      // Create CSV content
+      const csvContent = [csvHeaders, ...csvRows]
+        .map(row => row.map(field => `"${field}"`).join(','))
+        .join('\n')
+      
+      console.log('CSV content preview:', csvContent.substring(0, 200))
+      
+      // Download CSV file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob)
+        link.setAttribute('href', url)
+        const branchName = (authStore.currentBranch?.name || 'branch').replace(/[^a-zA-Z0-9]/g, '_')
+        const today = new Date().toISOString().slice(0, 10)
+        link.setAttribute('download', `${branchName}-session-details-${today}.csv`)
+        link.style.visibility = 'hidden'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+        
+        appStore.showSuccess(`Exported ${sessions.length} sessions successfully!`)
+      } else {
+        appStore.showError('Download not supported in this browser')
+      }
+    } else {
+      console.error('Export failed - API response:', response)
+      appStore.showError(response.message || 'No sessions found to export')
+    }
+  } catch (error) {
+    console.error('Export error:', error)
+    appStore.showError('Failed to export session details')
+  } finally {
+    isExporting.value = false
   }
 }
 

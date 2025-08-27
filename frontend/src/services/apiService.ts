@@ -208,6 +208,13 @@ class ApiService {
         () => realApi.sessions.delete(id),
         () => mockApi.sessions.delete(id)
       )
+    },
+
+    getAll: async (branchId: number): Promise<SessionResponse> => {
+      return this.callWithFallback(
+        () => realApi.sessions.getAll(branchId),
+        () => mockApi.sessions.getAll(branchId)
+      )
     }
   }
 

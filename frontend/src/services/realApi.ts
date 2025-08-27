@@ -300,6 +300,32 @@ export const realApi = {
       }
     },
 
+    async getAll(branchId: number): Promise<SessionResponse> {
+      try {
+        const params = new URLSearchParams({
+          branch_id: branchId.toString()
+        })
+
+        const response = await apiRequest(`sessions/all?${params}`)
+        const data = await response.json()
+
+        if (!response.ok) {
+          return {
+            success: false,
+            message: data.message || data.error || 'Failed to fetch all sessions'
+          }
+        }
+
+        return data
+      } catch (error) {
+        console.error('Get all sessions API error:', error)
+        return {
+          success: false,
+          message: 'Network error. Please check your connection.'
+        }
+      }
+    },
+
     async create(sessionData: SessionCreateData): Promise<SessionResponse> {
       try {
         const response = await apiRequest('sessions', {

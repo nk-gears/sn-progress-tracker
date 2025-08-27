@@ -61,7 +61,8 @@ export const generateMockSessions = (): Session[] => {
       const participant = mockParticipants[Math.floor(Math.random() * mockParticipants.length)]
       const startHour = 7 + Math.floor(Math.random() * 15) // 7 AM to 10 PM
       const startMinute = Math.random() > 0.5 ? 0 : 30
-      const duration = [30, 60, 90, 120][Math.floor(Math.random() * 4)]
+      const durations = [30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360, 390, 420, 450, 480, 510, 540, 570, 600, 630, 660, 690, 720, 750, 780, 810, 840, 870, 900, 930, 960]
+      const duration = durations[Math.floor(Math.random() * durations.length)]
       
       sessions.push({
         id: sessions.length + 1,
@@ -189,4 +190,16 @@ export const getSessionsByBranchAndDate = (branchId: number, date: string): Sess
   return mockSessions
     .filter(s => s.branch_id === branchId && s.session_date === date)
     .sort((a, b) => b.start_time.localeCompare(a.start_time))
+}
+
+export const getSessionsByBranch = (branchId: number): Session[] => {
+  return mockSessions
+    .filter(s => s.branch_id === branchId)
+    .sort((a, b) => {
+      // Sort by date descending, then by time descending
+      if (a.session_date !== b.session_date) {
+        return b.session_date.localeCompare(a.session_date)
+      }
+      return b.start_time.localeCompare(a.start_time)
+    })
 }

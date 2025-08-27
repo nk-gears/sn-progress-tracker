@@ -51,8 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $duration_minutes = (int)$input['duration_minutes'];
 
     // Validate duration
-    if (!in_array($duration_minutes, [30, 60, 90, 120])) {
-        sendResponse(['success' => false, 'message' => 'Duration must be 30, 60, 90, or 120 minutes'], 400);
+    if ($duration_minutes < 30 || $duration_minutes > 960 || $duration_minutes % 30 !== 0) {
+        sendResponse(['success' => false, 'message' => 'Duration must be between 30 and 960 minutes in 30-minute increments'], 400);
     }
 
     // Validate date format
@@ -153,8 +153,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 
     if (isset($input['duration_minutes'])) {
-        if (!in_array($input['duration_minutes'], [30, 60, 90, 120])) {
-            sendResponse(['success' => false, 'message' => 'Duration must be 30, 60, 90, or 120 minutes'], 400);
+        if ($input['duration_minutes'] < 30 || $input['duration_minutes'] > 960 || $input['duration_minutes'] % 30 !== 0) {
+            sendResponse(['success' => false, 'message' => 'Duration must be between 30 and 960 minutes in 30-minute increments'], 400);
         }
         $updateFields[] = 'duration_minutes = ?';
         $updateValues[] = (int)$input['duration_minutes'];

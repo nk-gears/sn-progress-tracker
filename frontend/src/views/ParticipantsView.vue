@@ -174,15 +174,22 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Name *</label>
             <input
               v-model="participantForm.name"
+              @input="handleNameInput"
               type="text"
               placeholder="Enter yogi name"
+              pattern="[A-Za-z\s]+"
+              title="Please enter only letters and spaces"
               :readonly="isEditing"
               :class="[
                 'w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary',
-                isEditing ? 'bg-gray-100 cursor-not-allowed' : ''
+                isEditing ? 'bg-gray-100 cursor-not-allowed' : '',
+                !isValidParticipantName && participantForm.name ? 'border-red-300' : ''
               ]"
               required
             >
+            <div v-if="!isValidParticipantName && participantForm.name" class="mt-1 text-sm text-red-600">
+              Name can only contain letters and spaces
+            </div>
           </div>
 
           <!-- Age -->
@@ -223,7 +230,7 @@
             </button>
             <button
               type="submit"
-              :disabled="isSaving || !participantForm.name.trim()"
+              :disabled="isSaving || !participantForm.name.trim() || !isValidParticipantName"
               class="flex-1 btn-primary"
             >
               <span v-if="isSaving">{{ isEditing ? 'Updating...' : 'Creating...' }}</span>
@@ -332,6 +339,7 @@ const displayLimit = ref(20)
 // Computed properties
 const participants = computed(() => participantsStore.participants)
 const isLoading = computed(() => participantsStore.isLoading)
+const isValidParticipantName = computed(() => /^[A-Za-z\s]*$/.test(participantForm.value.name))
 
 const filteredParticipants = computed(() => {
   if (!searchQuery.value.trim()) {
@@ -372,6 +380,14 @@ const handleSearch = async () => {
 const clearSearch = () => {
   searchQuery.value = ''
   participantsStore.clearSearch()
+}
+
+const handleNameInput = () => {
+  // Filter out numbers and special characters, keep only letters and spaces
+  const filteredValue = participantForm.value.name.replace(/[^A-Za-z\s]/g, '')
+  if (filteredValue !== participantForm.value.name) {
+    participantForm.value.name = filteredValue
+  }
 }
 
 const loadMore = () => {
@@ -428,6 +444,11 @@ const saveParticipant = async () => {
 
   if (!participantForm.value.name.trim()) {
     appStore.showError('Participant name is required')
+    return
+  }
+
+  if (!isValidParticipantName.value) {
+    appStore.showError('Name can only contain letters and spaces')
     return
   }
   

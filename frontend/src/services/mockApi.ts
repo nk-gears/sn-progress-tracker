@@ -247,6 +247,17 @@ export const mockApi = {
         sessions
       }
     },
+
+    async getAll(branchId: number): Promise<SessionResponse> {
+      await simulateDelay()
+      
+      const sessions = getSessionsByBranch(branchId)
+      
+      return {
+        success: true,
+        sessions
+      }
+    },
     
     async create(sessionData: SessionCreateData): Promise<SessionResponse> {
       await simulateDelay()
