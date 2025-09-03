@@ -680,29 +680,29 @@ function handleDashboard() {
     }
 
     try {
-        // Get summary stats
+        // Get summary stats (all-time totals)
         $total_participants_result = fetchRow("
             SELECT COUNT(DISTINCT participant_id) as total_participants
             FROM medt_meditation_sessions 
-            WHERE branch_id = ? AND DATE_FORMAT(session_date, '%Y-%m') = ?
-        ", [(int)$branch_id, $month], 'is');
+            WHERE branch_id = ?
+        ", [(int)$branch_id], 'i');
         
         $total_minutes_result = fetchRow("
             SELECT SUM(duration_minutes) as total_minutes
             FROM (
                 SELECT DISTINCT session_date, start_time, duration_minutes
                 FROM medt_meditation_sessions 
-                WHERE branch_id = ? AND DATE_FORMAT(session_date, '%Y-%m') = ?
+                WHERE branch_id = ?
             ) as unique_time_slots
-        ", [(int)$branch_id, $month], 'is');
+        ", [(int)$branch_id], 'i');
         
         $total_sessions_result = fetchRow("
             SELECT COUNT(*) as total_sessions
             FROM medt_meditation_sessions 
-            WHERE branch_id = ? AND DATE_FORMAT(session_date, '%Y-%m') = ?
-        ", [(int)$branch_id, $month], 'is');
+            WHERE branch_id = ?
+        ", [(int)$branch_id], 'i');
 
-        // Get top medt_participants
+        // Get top medt_participants (all-time)
         $top_medt_participants = fetchAll("
             SELECT 
                 ms.participant_id,
@@ -711,13 +711,13 @@ function handleDashboard() {
                 SUM(ms.duration_minutes) as total_minutes
             FROM medt_meditation_sessions ms
             JOIN medt_participants p ON ms.participant_id = p.id
-            WHERE ms.branch_id = ? AND DATE_FORMAT(ms.session_date, '%Y-%m') = ?
+            WHERE ms.branch_id = ?
             GROUP BY ms.participant_id, p.name
             ORDER BY session_count DESC, total_minutes DESC
             LIMIT 10
-        ", [(int)$branch_id, $month], 'is');
+        ", [(int)$branch_id], 'i');
 
-        // Get time distribution
+        // Get time distribution (all-time)
         $time_distribution = fetchAll("
             SELECT 
                 period,
@@ -733,14 +733,14 @@ function handleDashboard() {
                         ELSE 'Other'
                     END as period
                 FROM medt_meditation_sessions
-                WHERE branch_id = ? AND DATE_FORMAT(session_date, '%Y-%m') = ?
+                WHERE branch_id = ?
             ) as unique_periods
             WHERE period != 'Other'
             GROUP BY period
             ORDER BY session_count DESC
-        ", [(int)$branch_id, $month], 'is');
+        ", [(int)$branch_id], 'i');
 
-        // Get daily stats - total minutes based on unique time slots per day
+        // Get recent daily stats (last 30 days)
         $daily_stats = fetchAll("
             SELECT 
                 date,
@@ -757,11 +757,11 @@ function handleDashboard() {
                      WHERE ms2.session_date = ms1.session_date 
                        AND ms2.branch_id = ms1.branch_id) as total_participants
                 FROM medt_meditation_sessions ms1
-                WHERE branch_id = ? AND DATE_FORMAT(session_date, '%Y-%m') = ?
+                WHERE branch_id = ? AND session_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
             ) as unique_daily_slots
             GROUP BY date, total_participants
-            ORDER BY date
-        ", [(int)$branch_id, $month], 'is');
+            ORDER BY date DESC
+        ", [(int)$branch_id], 'i');
 
         $response = [
             'success' => true,

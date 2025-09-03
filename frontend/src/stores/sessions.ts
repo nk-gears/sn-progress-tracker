@@ -111,6 +111,8 @@ export const useSessionsStore = defineStore('sessions', () => {
     
     if (!branchId) return
     
+    // For all-time stats, we still pass the current month for any month-specific features
+    // but the backend will calculate all-time totals
     const targetMonth = month || new Date().toISOString().slice(0, 7)
     
     isLoading.value = true

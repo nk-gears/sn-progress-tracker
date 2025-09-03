@@ -342,22 +342,17 @@ export const mockApi = {
     async getStats(branchId: number, month: string): Promise<DashboardResponse> {
       await simulateDelay()
       
-      const [year, monthNum] = month.split('-').map(Number)
-      const sessionsInMonth = mockSessions.filter(s => {
-        const sessionDate = new Date(s.session_date)
-        return s.branch_id === branchId && 
-               sessionDate.getFullYear() === year && 
-               sessionDate.getMonth() === monthNum - 1
-      })
+      // Get all sessions for the branch (all-time totals)
+      const allSessionsForBranch = mockSessions.filter(s => s.branch_id === branchId)
       
-      // Summary statistics
-      const uniqueParticipants = new Set(sessionsInMonth.map(s => s.participant_id))
-      const totalMinutes = sessionsInMonth.reduce((sum, s) => sum + s.duration_minutes, 0)
+      // Summary statistics (all-time)
+      const uniqueParticipants = new Set(allSessionsForBranch.map(s => s.participant_id))
+      const totalMinutes = allSessionsForBranch.reduce((sum, s) => sum + s.duration_minutes, 0)
       const totalHours = Math.round(totalMinutes / 60 * 100) / 100
       
-      // Top participants
+      // Top participants (all-time)
       const participantStats: { [key: number]: any } = {}
-      sessionsInMonth.forEach(s => {
+      allSessionsForBranch.forEach(s => {
         if (!participantStats[s.participant_id]) {
           participantStats[s.participant_id] = {
             name: s.participant_name,
@@ -380,7 +375,7 @@ export const mockApi = {
         { time_period: 'Evening' as const, session_count: 0, total_minutes: 0 }
       ]
       
-      sessionsInMonth.forEach(s => {
+      allSessionsForBranch.forEach(s => {
         const hour = parseInt(s.start_time.split(':')[0])
         let period: 'Morning' | 'Afternoon' | 'Evening'
         
@@ -393,9 +388,16 @@ export const mockApi = {
         dist.total_minutes += s.duration_minutes
       })
       
-      // Daily stats
+      // Daily stats (recent 30 days)
+      const now = new Date()
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+      const recentSessions = allSessionsForBranch.filter(s => {
+        const sessionDate = new Date(s.session_date)
+        return sessionDate >= thirtyDaysAgo
+      })
+      
       const dailyStatsMap: { [key: string]: any } = {}
-      sessionsInMonth.forEach(s => {
+      recentSessions.forEach(s => {
         if (!dailyStatsMap[s.session_date]) {
           dailyStatsMap[s.session_date] = {
             session_date: s.session_date,
@@ -422,7 +424,7 @@ export const mockApi = {
           summary: {
             total_participants: uniqueParticipants.size,
             total_hours: totalHours,
-            total_sessions: sessionsInMonth.length,
+            total_sessions: allSessionsForBranch.length,
             month
           },
           top_participants: topParticipants,

@@ -1,9 +1,10 @@
 <template>
   <BaseLayout>
     <div class="p-4 space-y-4">
-      <!-- Month Header -->
+      <!-- Dashboard Header -->
       <div class="card p-4">
-        <h2 class="text-xl font-bold text-primary text-center">My Centre - Yoga Hours - Dashboard</h2>
+        <h2 class="text-xl font-bold text-primary text-center">My Centre - All-Time Statistics</h2>
+        <p class="text-sm text-gray-600 text-center mt-1">Total meditation hours and sessions across all time</p>
       </div>
       
       <!-- Summary Cards - Mobile Stack -->
