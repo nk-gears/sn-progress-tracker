@@ -118,7 +118,9 @@ export const useParticipantsStore = defineStore('participants', () => {
   
   const updateParticipant = async (id: number, data: Partial<Participant>): Promise<boolean> => {
     try {
+      console.log('Store: Updating participant', id, 'with data:', data)
       const response = await apiService.participants.update(id, data)
+      console.log('Store: Update response:', response)
       
       if (response.success) {
         // Update local participant

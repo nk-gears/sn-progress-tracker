@@ -179,10 +179,8 @@
               placeholder="Enter yogi name"
               pattern="[A-Za-z\s]+"
               title="Please enter only letters and spaces"
-              :readonly="isEditing"
               :class="[
                 'w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary',
-                isEditing ? 'bg-gray-100 cursor-not-allowed' : '',
                 !isValidParticipantName && participantForm.name ? 'border-red-300' : ''
               ]"
               required
@@ -459,12 +457,16 @@ const saveParticipant = async () => {
     
     if (isEditing.value && editingParticipantId.value) {
       // Update existing participant
+      const updateData = {
+        name: participantForm.value.name.trim(),
+        age: participantForm.value.age,
+        gender: participantForm.value.gender || null
+      }
+      console.log('Updating participant with data:', updateData)
+      
       success = await participantsStore.updateParticipant(
         editingParticipantId.value,
-        {
-          age: participantForm.value.age,
-          gender: participantForm.value.gender || null
-        }
+        updateData
       )
       
       if (success) {

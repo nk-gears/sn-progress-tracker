@@ -370,6 +370,7 @@ function handleParticipants() {
 
     } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         $input = json_decode(file_get_contents('php://input'), true);
+        error_log('PUT participants - received data: ' . json_encode($input));
         
         if (!isset($input['id'])) {
             sendResponse(['success' => false, 'message' => 'Participant ID is required'], 400);
@@ -381,8 +382,15 @@ function handleParticipants() {
         $types = '';
 
         if (isset($input['name']) && !empty(trim($input['name']))) {
+            $name = trim($input['name']);
+            
+            // Validate that name contains only letters and spaces
+            if (!preg_match('/^[A-Za-z\s]+$/', $name)) {
+                sendResponse(['success' => false, 'message' => 'Name can only contain letters and spaces'], 400);
+            }
+            
             $updateFields[] = 'name = ?';
-            $updateValues[] = trim($input['name']);
+            $updateValues[] = $name;
             $types .= 's';
         }
 
