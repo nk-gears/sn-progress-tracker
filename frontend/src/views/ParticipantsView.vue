@@ -332,7 +332,7 @@ const participantForm = ref({
 const deletingParticipant = ref<Participant | null>(null)
 const isSaving = ref(false)
 const isDeleting = ref(false)
-const displayLimit = ref(20)
+const displayLimit = ref(2000)
 
 // Computed properties
 const participants = computed(() => participantsStore.participants)
@@ -389,7 +389,7 @@ const handleNameInput = () => {
 }
 
 const loadMore = () => {
-  displayLimit.value += 20
+  displayLimit.value += 300
 }
 
 const addParticipant = () => {

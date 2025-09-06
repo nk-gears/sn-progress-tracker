@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $params[] = "%$search%";
             }
 
-            $sql .= " ORDER BY name LIMIT 50";
+            $sql .= " ORDER BY name LIMIT 5000";
 
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);

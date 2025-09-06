@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $types .= 's';
             }
 
-            $sql .= " ORDER BY name LIMIT 50";
+            $sql .= " ORDER BY name LIMIT 5000";
 
             $medt_participants = fetchAll($sql, $params, $types);
             

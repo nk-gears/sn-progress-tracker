@@ -204,7 +204,7 @@ function handleParticipants() {
                 $types .= 's';
             }
 
-            $limit = ($action === 'search') ? 20 : 50;
+            $limit = ($action === 'search') ? 50 : 5000;
             $sql .= " ORDER BY name LIMIT $limit";
 
             $medt_participants = fetchAll($sql, $params, $types);
