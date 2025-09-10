@@ -9,6 +9,7 @@ const DashboardView = () => import('@/views/DashboardView.vue')
 const DataEntryView = () => import('@/views/DataEntryView.vue')
 const ParticipantsView = () => import('@/views/ParticipantsView.vue')
 const ProfileView = () => import('@/views/ProfileView.vue')
+const AdminReportView = () => import('@/views/AdminReportView.vue')
 
 const routes: RouteRecordRaw[] = [
   {
@@ -70,6 +71,15 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Profile - Meditation Tracker'
+    }
+  },
+  {
+    path: '/admin-report',
+    name: 'AdminReport',
+    component: AdminReportView,
+    meta: {
+      requiresAuth: false,
+      title: 'Admin Report - Meditation Tracker'
     }
   },
   {

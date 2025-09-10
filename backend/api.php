@@ -74,11 +74,19 @@ switch ($endpoint) {
         handleBulkUsers();
         break;
         
+    case 'admin-report':
+        handleAdminReport();
+        break;
+        
+    case 'branches':
+        handleBranches();
+        break;
+        
     default:
         sendResponse([
             'success' => false,
             'error' => 'Invalid endpoint',
-            'message' => "Endpoint '$endpoint' not found. Available endpoints: auth, participants, sessions, dashboard, profile, onboard, bulk-users",
+            'message' => "Endpoint '$endpoint' not found. Available endpoints: auth, participants, sessions, dashboard, profile, onboard, bulk-users, admin-report, branches",
             'available_endpoints' => [
                 'POST /api/auth - User authentication',
                 'GET /api/participants - Get participants',
@@ -92,7 +100,9 @@ switch ($endpoint) {
                 'PUT /api/profile/phone - Update phone number',
                 'PUT /api/profile/password - Update password',
                 'POST /api/onboard - Onboard new user with branch mapping',
-                'POST /api/bulk-users - Bulk create users with branch mapping'
+                'POST /api/bulk-users - Bulk create users with branch mapping',
+                'POST /api/admin-report - Generate admin reports',
+                'GET /api/branches - Get all branches (public)'
             ]
         ], 404);
 }
@@ -1363,5 +1373,163 @@ function processBulkUser($userData, $index) {
     }
 
     return $result;
+}
+
+// Admin Report handler
+function handleAdminReport() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        sendResponse(['success' => false, 'message' => 'Method not allowed for /api/admin-report'], 405);
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    error_log('Admin report - received data: ' . json_encode($input));
+
+    $branch_ids = $input['branch_ids'] ?? [];
+    $start_date = $input['start_date'] ?? null;
+    $end_date = $input['end_date'] ?? null;
+
+    if (empty($branch_ids)) {
+        sendResponse(['success' => false, 'message' => 'Branch IDs are required'], 400);
+    }
+
+    try {
+        $reports = [];
+        
+        // Create placeholders for branch IDs
+        $placeholders = str_repeat('?,', count($branch_ids) - 1) . '?';
+        
+        foreach ($branch_ids as $branch_id) {
+            // Get branch name
+            $branch = fetchRow("SELECT name FROM medt_branches WHERE id = ?", [$branch_id], 'i');
+            if (!$branch) {
+                continue; // Skip if branch not found
+            }
+            
+            // Build date filter condition
+            $dateCondition = '';
+            $dateParams = [];
+            $dateTypes = '';
+            
+            if ($start_date && $end_date) {
+                $dateCondition = ' AND session_date BETWEEN ? AND ?';
+                $dateParams = [$start_date, $end_date];
+                $dateTypes = 'ss';
+            } elseif ($start_date) {
+                $dateCondition = ' AND session_date >= ?';
+                $dateParams = [$start_date];
+                $dateTypes = 's';
+            } elseif ($end_date) {
+                $dateCondition = ' AND session_date <= ?';
+                $dateParams = [$end_date];
+                $dateTypes = 's';
+            }
+            
+            // Get summary statistics for this branch
+            $summary_params = array_merge([$branch_id], $dateParams);
+            $summary_types = 'i' . $dateTypes;
+            
+            // Total unique participants
+            $total_participants = fetchRow("
+                SELECT COUNT(DISTINCT participant_id) as total_participants
+                FROM medt_meditation_sessions 
+                WHERE branch_id = ? $dateCondition
+            ", $summary_params, $summary_types);
+            
+            // Total sessions
+            $total_sessions = fetchRow("
+                SELECT COUNT(*) as total_sessions
+                FROM medt_meditation_sessions 
+                WHERE branch_id = ? $dateCondition
+            ", $summary_params, $summary_types);
+            
+            // Total hours (using unique time slots logic)
+            $total_minutes = fetchRow("
+                SELECT SUM(duration_minutes) as total_minutes
+                FROM (
+                    SELECT DISTINCT session_date, start_time, duration_minutes
+                    FROM medt_meditation_sessions 
+                    WHERE branch_id = ? $dateCondition
+                ) as unique_time_slots
+            ", $summary_params, $summary_types);
+            
+            // Get daily stats
+            $daily_stats = fetchAll("
+                SELECT 
+                    date,
+                    COUNT(*) as sessions_count,
+                    unique_participants,
+                    SUM(duration_minutes) as total_minutes
+                FROM (
+                    SELECT DISTINCT
+                        session_date as date,
+                        start_time,
+                        duration_minutes,
+                        (SELECT COUNT(DISTINCT participant_id) 
+                         FROM medt_meditation_sessions ms2 
+                         WHERE ms2.session_date = ms1.session_date 
+                           AND ms2.branch_id = ms1.branch_id) as unique_participants
+                    FROM medt_meditation_sessions ms1
+                    WHERE branch_id = ? $dateCondition
+                ) as unique_daily_slots
+                GROUP BY date, unique_participants
+                ORDER BY date DESC
+            ", $summary_params, $summary_types);
+            
+            $reports[] = [
+                'branch_id' => $branch_id,
+                'branch_name' => $branch['name'],
+                'summary' => [
+                    'participants' => (int)($total_participants['total_participants'] ?? 0),
+                    'sessions' => (int)($total_sessions['total_sessions'] ?? 0),
+                    'hours' => round(($total_minutes['total_minutes'] ?? 0) / 60, 2)
+                ],
+                'daily_stats' => array_map(function($stat) {
+                    return [
+                        'date' => $stat['date'],
+                        'sessions_count' => (int)$stat['sessions_count'],
+                        'unique_participants' => (int)$stat['unique_participants'],
+                        'total_minutes' => (int)$stat['total_minutes']
+                    ];
+                }, $daily_stats)
+            ];
+        }
+        
+        sendResponse([
+            'success' => true,
+            'data' => $reports
+        ]);
+        
+    } catch (Exception $e) {
+        error_log('Admin report error: ' . $e->getMessage());
+        sendResponse(['success' => false, 'message' => 'Failed to generate admin report'], 500);
+    }
+}
+
+// Branches handler (public endpoint)
+function handleBranches() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+        sendResponse(['success' => false, 'message' => 'Method not allowed for /api/branches'], 405);
+    }
+
+    try {
+        $branches = fetchAll("SELECT id, name FROM medt_branches ORDER BY name");
+        sendResponse([
+            'success' => true,
+            'branches' => $branches
+        ]);
+    } catch (Exception $e) {
+        error_log('Branches error: ' . $e->getMessage());
+        sendResponse(['success' => false, 'message' => 'Failed to fetch branches'], 500);
+    }
+}
+
+// Public function to get all branches (for admin report)
+function getAllBranches() {
+    try {
+        return fetchAll("SELECT id, name FROM medt_branches ORDER BY name");
+    } catch (Exception $e) {
+        error_log('Get all branches error: ' . $e->getMessage());
+        return [];
+    }
 }
 ?>
