@@ -677,6 +677,68 @@ function handleSessions() {
 }
 
 // Dashboard handler
+// Helper function to calculate total minutes accounting for overlapping sessions
+function calculateTotalMinutesWithOverlap($sessions) {
+    if (empty($sessions)) {
+        return 0;
+    }
+
+    // Group sessions by date
+    $sessionsByDate = [];
+    foreach ($sessions as $session) {
+        $date = $session['session_date'];
+        if (!isset($sessionsByDate[$date])) {
+            $sessionsByDate[$date] = [];
+        }
+
+        // Convert time to minutes from midnight
+        list($hours, $minutes) = explode(':', $session['start_time']);
+        $startMinutes = ($hours * 60) + $minutes;
+        $endMinutes = $startMinutes + $session['duration_minutes'];
+
+        $sessionsByDate[$date][] = [
+            'start' => $startMinutes,
+            'end' => $endMinutes
+        ];
+    }
+
+    $totalMinutes = 0;
+
+    // Process each date separately
+    foreach ($sessionsByDate as $date => $daysSessions) {
+        // Sort by start time
+        usort($daysSessions, function($a, $b) {
+            return $a['start'] - $b['start'];
+        });
+
+        // Merge overlapping intervals
+        $merged = [];
+        foreach ($daysSessions as $session) {
+            if (empty($merged)) {
+                $merged[] = $session;
+            } else {
+                $last = &$merged[count($merged) - 1];
+
+                // If current session overlaps with or is adjacent to the last merged session
+                if ($session['start'] <= $last['end']) {
+                    // Extend the end time if needed
+                    $last['end'] = max($last['end'], $session['end']);
+                } else {
+                    // No overlap, add as new interval
+                    $merged[] = $session;
+                }
+            }
+        }
+
+        // Sum up the merged intervals for this date
+        foreach ($merged as $interval) {
+            $totalMinutes += ($interval['end'] - $interval['start']);
+        }
+    }
+
+    return $totalMinutes;
+}
+
 function handleDashboard() {
     if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
         sendResponse(['error' => 'Method not allowed for /api/dashboard'], 405);
@@ -697,14 +759,17 @@ function handleDashboard() {
             WHERE branch_id = ?
         ", [(int)$branch_id], 'i');
         
-        $total_minutes_result = fetchRow("
-            SELECT SUM(duration_minutes) as total_minutes
-            FROM (
-                SELECT DISTINCT session_date, start_time, duration_minutes
-                FROM medt_meditation_sessions 
-                WHERE branch_id = ?
-            ) as unique_time_slots
+        // Calculate total hours by merging overlapping time slots per date
+        // This prevents double-counting when sessions overlap
+        $sessions_for_hours = fetchAll("
+            SELECT DISTINCT session_date, start_time, duration_minutes
+            FROM medt_meditation_sessions
+            WHERE branch_id = ?
+            ORDER BY session_date, start_time
         ", [(int)$branch_id], 'i');
+
+        $total_minutes = calculateTotalMinutesWithOverlap($sessions_for_hours);
+        $total_minutes_result = ['total_minutes' => $total_minutes];
         
         $total_sessions_result = fetchRow("
             SELECT COUNT(*) as total_sessions
@@ -751,27 +816,47 @@ function handleDashboard() {
         ", [(int)$branch_id], 'i');
 
         // Get recent daily stats (last 30 days)
-        $daily_stats = fetchAll("
-            SELECT 
-                date,
-                COUNT(*) as sessions_count,
-                total_participants as unique_participants,
-                SUM(duration_minutes) as total_minutes
-            FROM (
-                SELECT DISTINCT
-                    session_date as date,
-                    start_time,
-                    duration_minutes,
-                    (SELECT COUNT(DISTINCT participant_id) 
-                     FROM medt_meditation_sessions ms2 
-                     WHERE ms2.session_date = ms1.session_date 
-                       AND ms2.branch_id = ms1.branch_id) as total_participants
-                FROM medt_meditation_sessions ms1
-                WHERE branch_id = ? AND session_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-            ) as unique_daily_slots
-            GROUP BY date, total_participants
-            ORDER BY date DESC
+        // First get all distinct sessions for the last 30 days
+        $daily_sessions = fetchAll("
+            SELECT DISTINCT
+                session_date,
+                start_time,
+                duration_minutes
+            FROM medt_meditation_sessions
+            WHERE branch_id = ? AND session_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            ORDER BY session_date DESC, start_time
         ", [(int)$branch_id], 'i');
+
+        // Group sessions by date and calculate overlap-aware totals
+        $sessions_by_date = [];
+        foreach ($daily_sessions as $session) {
+            $date = $session['session_date'];
+            if (!isset($sessions_by_date[$date])) {
+                $sessions_by_date[$date] = [];
+            }
+            $sessions_by_date[$date][] = $session;
+        }
+
+        // Calculate stats for each date
+        $daily_stats = [];
+        foreach ($sessions_by_date as $date => $sessions) {
+            // Get unique participants for this date
+            $participant_count = fetchRow("
+                SELECT COUNT(DISTINCT participant_id) as total_participants
+                FROM medt_meditation_sessions
+                WHERE branch_id = ? AND session_date = ?
+            ", [(int)$branch_id, $date], 'is');
+
+            // Calculate total minutes with overlap handling
+            $total_minutes = calculateTotalMinutesWithOverlap($sessions);
+
+            $daily_stats[] = [
+                'date' => $date,
+                'sessions_count' => count($sessions),
+                'unique_participants' => (int)$participant_count['total_participants'],
+                'total_minutes' => $total_minutes
+            ];
+        }
 
         $response = [
             'success' => true,
@@ -1442,38 +1527,61 @@ function handleAdminReport() {
                 WHERE branch_id = ? $dateCondition
             ", $summary_params, $summary_types);
             
-            // Total hours (using unique time slots logic)
-            $total_minutes = fetchRow("
-                SELECT SUM(duration_minutes) as total_minutes
-                FROM (
-                    SELECT DISTINCT session_date, start_time, duration_minutes
-                    FROM medt_meditation_sessions 
-                    WHERE branch_id = ? $dateCondition
-                ) as unique_time_slots
+            // Total hours (accounting for overlapping sessions)
+            $sessions_for_hours = fetchAll("
+                SELECT DISTINCT session_date, start_time, duration_minutes
+                FROM medt_meditation_sessions
+                WHERE branch_id = ? $dateCondition
+                ORDER BY session_date, start_time
             ", $summary_params, $summary_types);
+
+            $total_minutes_value = calculateTotalMinutesWithOverlap($sessions_for_hours);
+            $total_minutes = ['total_minutes' => $total_minutes_value];
             
             // Get daily stats
-            $daily_stats = fetchAll("
-                SELECT 
-                    date,
-                    COUNT(*) as sessions_count,
-                    unique_participants,
-                    SUM(duration_minutes) as total_minutes
-                FROM (
-                    SELECT DISTINCT
-                        session_date as date,
-                        start_time,
-                        duration_minutes,
-                        (SELECT COUNT(DISTINCT participant_id) 
-                         FROM medt_meditation_sessions ms2 
-                         WHERE ms2.session_date = ms1.session_date 
-                           AND ms2.branch_id = ms1.branch_id) as unique_participants
-                    FROM medt_meditation_sessions ms1
-                    WHERE branch_id = ? $dateCondition
-                ) as unique_daily_slots
-                GROUP BY date, unique_participants
-                ORDER BY date DESC
+            // First get all distinct sessions for the date range
+            $daily_sessions = fetchAll("
+                SELECT DISTINCT
+                    session_date,
+                    start_time,
+                    duration_minutes
+                FROM medt_meditation_sessions
+                WHERE branch_id = ? $dateCondition
+                ORDER BY session_date DESC, start_time
             ", $summary_params, $summary_types);
+
+            // Group sessions by date and calculate overlap-aware totals
+            $sessions_by_date = [];
+            foreach ($daily_sessions as $session) {
+                $date = $session['session_date'];
+                if (!isset($sessions_by_date[$date])) {
+                    $sessions_by_date[$date] = [];
+                }
+                $sessions_by_date[$date][] = $session;
+            }
+
+            // Calculate stats for each date
+            $daily_stats = [];
+            foreach ($sessions_by_date as $date => $sessions) {
+                // Get unique participants for this date
+                $participant_params = [(int)$branch_id, $date];
+                $participant_types = 'is';
+                $participant_count = fetchRow("
+                    SELECT COUNT(DISTINCT participant_id) as total_participants
+                    FROM medt_meditation_sessions
+                    WHERE branch_id = ? AND session_date = ?
+                ", $participant_params, $participant_types);
+
+                // Calculate total minutes with overlap handling
+                $total_minutes = calculateTotalMinutesWithOverlap($sessions);
+
+                $daily_stats[] = [
+                    'date' => $date,
+                    'sessions_count' => count($sessions),
+                    'unique_participants' => (int)$participant_count['total_participants'],
+                    'total_minutes' => $total_minutes
+                ];
+            }
             
             $reports[] = [
                 'branch_id' => $branch_id,

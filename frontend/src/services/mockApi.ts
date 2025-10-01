@@ -341,13 +341,81 @@ export const mockApi = {
   dashboard: {
     async getStats(branchId: number, month: string): Promise<DashboardResponse> {
       await simulateDelay()
-      
+
+      // Helper function to calculate total minutes accounting for overlapping sessions
+      const calculateTotalMinutesWithOverlap = (sessions: any[]): number => {
+        if (sessions.length === 0) return 0
+
+        // Group sessions by date
+        const sessionsByDate: { [key: string]: any[] } = {}
+        sessions.forEach(session => {
+          const date = session.session_date
+          if (!sessionsByDate[date]) {
+            sessionsByDate[date] = []
+          }
+
+          // Convert time to minutes from midnight
+          const [hours, minutes] = session.start_time.split(':').map(Number)
+          const startMinutes = (hours * 60) + minutes
+          const endMinutes = startMinutes + session.duration_minutes
+
+          sessionsByDate[date].push({
+            start: startMinutes,
+            end: endMinutes
+          })
+        })
+
+        let totalMinutes = 0
+
+        // Process each date separately
+        Object.values(sessionsByDate).forEach(daySessions => {
+          // Sort by start time
+          daySessions.sort((a, b) => a.start - b.start)
+
+          // Merge overlapping intervals
+          const merged: any[] = []
+          daySessions.forEach(session => {
+            if (merged.length === 0) {
+              merged.push({ ...session })
+            } else {
+              const last = merged[merged.length - 1]
+
+              // If current session overlaps with or is adjacent to the last merged session
+              if (session.start <= last.end) {
+                // Extend the end time if needed
+                last.end = Math.max(last.end, session.end)
+              } else {
+                // No overlap, add as new interval
+                merged.push({ ...session })
+              }
+            }
+          })
+
+          // Sum up the merged intervals for this date
+          merged.forEach(interval => {
+            totalMinutes += (interval.end - interval.start)
+          })
+        })
+
+        return totalMinutes
+      }
+
       // Get all sessions for the branch (all-time totals)
       const allSessionsForBranch = mockSessions.filter(s => s.branch_id === branchId)
-      
+
+      // Get unique sessions (distinct by date, start_time, duration)
+      const uniqueSessionsMap = new Map<string, any>()
+      allSessionsForBranch.forEach(s => {
+        const key = `${s.session_date}_${s.start_time}_${s.duration_minutes}`
+        if (!uniqueSessionsMap.has(key)) {
+          uniqueSessionsMap.set(key, s)
+        }
+      })
+      const uniqueSessions = Array.from(uniqueSessionsMap.values())
+
       // Summary statistics (all-time)
       const uniqueParticipants = new Set(allSessionsForBranch.map(s => s.participant_id))
-      const totalMinutes = allSessionsForBranch.reduce((sum, s) => sum + s.duration_minutes, 0)
+      const totalMinutes = calculateTotalMinutesWithOverlap(uniqueSessions)
       const totalHours = Math.round(totalMinutes / 60 * 100) / 100
       
       // Top participants (all-time)
@@ -368,24 +436,35 @@ export const mockApi = {
         .sort((a: any, b: any) => b.session_count - a.session_count)
         .slice(0, 10)
       
-      // Time distribution
+      // Time distribution (group unique sessions by time period)
       const timeDistribution = [
         { time_period: 'Morning' as const, session_count: 0, total_minutes: 0 },
         { time_period: 'Afternoon' as const, session_count: 0, total_minutes: 0 },
         { time_period: 'Evening' as const, session_count: 0, total_minutes: 0 }
       ]
-      
-      allSessionsForBranch.forEach(s => {
+
+      const sessionsByPeriod: { [key: string]: any[] } = {
+        'Morning': [],
+        'Afternoon': [],
+        'Evening': []
+      }
+
+      uniqueSessions.forEach(s => {
         const hour = parseInt(s.start_time.split(':')[0])
         let period: 'Morning' | 'Afternoon' | 'Evening'
-        
+
         if (hour < 12) period = 'Morning'
         else if (hour < 17) period = 'Afternoon'
         else period = 'Evening'
-        
+
+        sessionsByPeriod[period].push(s)
+      })
+
+      // Calculate overlap-aware totals for each period
+      Object.entries(sessionsByPeriod).forEach(([period, sessions]) => {
         const dist = timeDistribution.find(d => d.time_period === period)!
-        dist.session_count++
-        dist.total_minutes += s.duration_minutes
+        dist.session_count = sessions.length
+        dist.total_minutes = calculateTotalMinutesWithOverlap(sessions)
       })
       
       // Daily stats (recent 30 days)
@@ -395,26 +474,44 @@ export const mockApi = {
         const sessionDate = new Date(s.session_date)
         return sessionDate >= thirtyDaysAgo
       })
-      
+
+      // Get unique recent sessions
+      const uniqueRecentSessionsMap = new Map<string, any>()
+      recentSessions.forEach(s => {
+        const key = `${s.session_date}_${s.start_time}_${s.duration_minutes}`
+        if (!uniqueRecentSessionsMap.has(key)) {
+          uniqueRecentSessionsMap.set(key, s)
+        }
+      })
+      const uniqueRecentSessions = Array.from(uniqueRecentSessionsMap.values())
+
+      // Group by date
       const dailyStatsMap: { [key: string]: any } = {}
       recentSessions.forEach(s => {
         if (!dailyStatsMap[s.session_date]) {
           dailyStatsMap[s.session_date] = {
             session_date: s.session_date,
-            sessions_count: 0,
-            unique_participants: new Set(),
-            total_minutes: 0
+            sessions: [],
+            unique_participants: new Set()
           }
         }
-        dailyStatsMap[s.session_date].sessions_count++
         dailyStatsMap[s.session_date].unique_participants.add(s.participant_id)
-        dailyStatsMap[s.session_date].total_minutes += s.duration_minutes
       })
-      
+
+      // Add unique sessions to each date
+      uniqueRecentSessions.forEach(s => {
+        if (dailyStatsMap[s.session_date]) {
+          dailyStatsMap[s.session_date].sessions.push(s)
+        }
+      })
+
+      // Calculate overlap-aware totals for each day
       const dailyStats = Object.values(dailyStatsMap)
         .map((d: any) => ({
-          ...d,
-          unique_participants: d.unique_participants.size
+          session_date: d.session_date,
+          sessions_count: d.sessions.length,
+          unique_participants: d.unique_participants.size,
+          total_minutes: calculateTotalMinutesWithOverlap(d.sessions)
         }))
         .sort((a: any, b: any) => b.session_date.localeCompare(a.session_date))
       

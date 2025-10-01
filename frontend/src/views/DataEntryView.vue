@@ -218,21 +218,53 @@ const formatSelectedDate = computed(() => {
 })
 
 const totalSessionHours = computed(() => {
-  // Group sessions by unique time slots (start_time + duration)
-  const uniqueTimeSlots = new Map<string, number>()
-  
+  if (dateSessionsList.value.length === 0) return '0.0'
+
+  // Get unique sessions (distinct by start_time + duration)
+  const uniqueSessionsMap = new Map<string, any>()
   dateSessionsList.value.forEach(session => {
-    const timeSlotKey = `${session.start_time}-${session.duration_minutes}`
-    if (!uniqueTimeSlots.has(timeSlotKey)) {
-      uniqueTimeSlots.set(timeSlotKey, session.duration_minutes)
+    const key = `${session.start_time}_${session.duration_minutes}`
+    if (!uniqueSessionsMap.has(key)) {
+      uniqueSessionsMap.set(key, session)
     }
   })
-  
-  // Sum only the unique time slot durations
-  const totalMinutes = Array.from(uniqueTimeSlots.values()).reduce((total, minutes) => {
-    return total + minutes
+  const uniqueSessions = Array.from(uniqueSessionsMap.values())
+
+  // Convert sessions to intervals (minutes from midnight)
+  const intervals = uniqueSessions.map(session => {
+    const [hours, minutes] = session.start_time.split(':').map(Number)
+    const startMinutes = (hours * 60) + minutes
+    const endMinutes = startMinutes + session.duration_minutes
+    return { start: startMinutes, end: endMinutes }
+  })
+
+  // Sort by start time
+  intervals.sort((a, b) => a.start - b.start)
+
+  // Merge overlapping intervals
+  const merged: Array<{ start: number; end: number }> = []
+  intervals.forEach(interval => {
+    if (merged.length === 0) {
+      merged.push({ ...interval })
+    } else {
+      const last = merged[merged.length - 1]
+
+      // If current interval overlaps with or is adjacent to the last merged interval
+      if (interval.start <= last.end) {
+        // Extend the end time if needed
+        last.end = Math.max(last.end, interval.end)
+      } else {
+        // No overlap, add as new interval
+        merged.push({ ...interval })
+      }
+    }
+  })
+
+  // Sum up the merged intervals
+  const totalMinutes = merged.reduce((total, interval) => {
+    return total + (interval.end - interval.start)
   }, 0)
-  
+
   return (totalMinutes / 60).toFixed(1)
 })
 
