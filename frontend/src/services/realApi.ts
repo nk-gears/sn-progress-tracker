@@ -24,6 +24,7 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}): Promise<
       'Content-Type': 'application/json',
       ...options.headers,
     },
+    credentials: 'include',
   }
 
   // Add timeout
@@ -433,6 +434,50 @@ export const realApi = {
           success: false,
           message: 'Network error. Please check your connection.'
         }
+      }
+    }
+  },
+
+  // Individual Hours endpoints
+  individualHours: {
+    async getForMonth(participantId: number, branchId: number, month: string): Promise<any> {
+      try {
+        const params = new URLSearchParams({
+          participant_id: participantId.toString(),
+          branch_id: branchId.toString(),
+          month
+        })
+        const response = await apiRequest(`individual-hours?${params}`)
+        const data = await response.json()
+        if (!response.ok) {
+          return {
+            success: false,
+            message: data.message || data.error || 'Failed to fetch individual hours'
+          }
+        }
+        return data
+      } catch (error) {
+        console.error('Individual hours GET API error:', error)
+        return { success: false, message: 'Network error. Please check your connection.' }
+      }
+    },
+    async saveForMonth(participantId: number, branchId: number, month: string, entries: any[]): Promise<any> {
+      try {
+        const response = await apiRequest('individual-hours', {
+          method: 'POST',
+          body: JSON.stringify({ participant_id: participantId, branch_id: branchId, month, entries })
+        })
+        const data = await response.json()
+        if (!response.ok) {
+          return {
+            success: false,
+            message: data.message || data.error || 'Failed to save individual hours'
+          }
+        }
+        return data
+      } catch (error) {
+        console.error('Individual hours POST API error:', error)
+        return { success: false, message: 'Network error. Please check your connection.' }
       }
     }
   },

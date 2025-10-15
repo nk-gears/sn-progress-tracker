@@ -228,6 +228,22 @@ class ApiService {
     }
   }
 
+  // Individual Hours API
+  individualHours = {
+    getForMonth: async (participantId: number, branchId: number, month: string) => {
+      return this.callWithFallback(
+        () => realApi.individualHours.getForMonth(participantId, branchId, month),
+        () => mockApi.individualHours.getForMonth(participantId, branchId, month)
+      )
+    },
+    saveForMonth: async (participantId: number, branchId: number, month: string, entries: any[]) => {
+      return this.callWithFallback(
+        () => realApi.individualHours.saveForMonth(participantId, branchId, month, entries),
+        () => mockApi.individualHours.saveForMonth(participantId, branchId, month, entries)
+      )
+    }
+  }
+
   // Profile API
   profile = {
     updatePhone: async (data: { userId: number; newPhone: string; currentPassword: string }): Promise<AuthResponse> => {

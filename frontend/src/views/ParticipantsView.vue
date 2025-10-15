@@ -69,7 +69,20 @@
                 </span>
               </div>
               <div>
-                <div class="font-medium text-gray-900">{{ participant.name }}</div>
+                <div class="flex items-center space-x-2">
+                  <div class="font-medium text-gray-900">{{ participant.name }}</div>
+                  <!-- Individual Hours icon placed after the name and enlarged -->
+                  <button
+                    @click="openIndividualHours(participant)"
+                    class="p-3 text-purple-700 hover:bg-purple-50 rounded-full touch-target"
+                    title="Individual Hours"
+                    aria-label="Open Individual Hours"
+                  >
+                    <svg class="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 1.343-3 3 0 1.306.835 2.418 2 2.83V18l2 1v-6.17A3.001 3.001 0 0012 8zM12 3v2m7 7h2M3 12H1m15.364-6.364l1.414 1.414M6.222 17.778l-1.414 1.414m12.728 0l-1.414-1.414M6.222 6.222L4.808 4.808" />
+                    </svg>
+                  </button>
+                </div>
                 <div class="text-sm text-gray-600">
                   <span v-if="participant.age">{{ participant.age }} years</span>
                   <span v-if="participant.age && participant.gender"> • </span>
@@ -304,6 +317,100 @@
         </div>
       </div>
     </div>
+
+    <!-- Individual Hours Modal -->
+    <div
+      v-if="showIndividual"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      @click="closeIndividualModal"
+    >
+      <div class="bg-white rounded-2xl p-6 w-full max-w-3xl" @click.stop>
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center">
+            <svg class="w-7 h-7 text-purple-700 animate-pulse mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 1.343-3 3 0 1.306.835 2.418 2 2.83V18l2 1v-6.17A3.001 3.001 0 0012 8zM12 3v2m7 7h2M3 12H1m15.364-6.364l1.414 1.414M6.222 17.778l-1.414 1.414m12.728 0l-1.414-1.414M6.222 6.222L4.808 4.808" />
+            </svg>
+            <h3 class="text-lg font-semibold text-gray-900">
+              Individual Hours - {{ selectedIndividualParticipant?.name }}
+            </h3>
+          </div>
+          <button @click="closeIndividualModal" class="p-2 text-gray-400 hover:text-gray-600 rounded-lg">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Month selector -->
+        <div class="mb-4 flex items-center space-x-3">
+          <label class="text-sm text-gray-700">Select Month</label>
+          <input type="month" v-model="individualMonth" class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" />
+        </div>
+
+        <div class="overflow-auto max-h-[60vh] border rounded-xl">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 sticky top-0">
+              <tr>
+                <th class="text-left px-4 py-2 font-medium text-gray-700">Date</th>
+                <th class="text-left px-4 py-2 font-medium text-gray-700">Total Hours</th>
+                <th class="text-left px-4 py-2 font-medium text-gray-700">Location</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in individualRows" :key="row.date" class="border-t">
+                <td class="px-4 py-2 text-gray-800">{{ row.date }}</td>
+                <td class="px-4 py-2">
+                  <div class="flex items-center space-x-3 flex-wrap gap-y-2">
+                    <label v-for="opt in hourOptions" :key="opt" class="inline-flex items-center space-x-1">
+                      <input
+                        type="checkbox"
+                        :value="opt"
+                        v-model="row.selected"
+                        @change="(row => { const total = row.selected.reduce((a:number, b:number) => a + b, 0); row.minutes = total; row.hours = +(total/60).toFixed(2); })(row)"
+                      />
+                      <span>{{ (opt/60).toFixed(1) }}</span>
+                    </label>
+                    <input
+                      type="number"
+                      class="w-24 px-2 py-1 border border-gray-300 rounded-lg text-sm"
+                      v-model.number="row.hours"
+                      min="0"
+                      step="0.1"
+                      placeholder="hours"
+                      @input="row.minutes = Math.max(0, Math.round(((row.hours || 0) * 60)))"
+                    />
+                    <button
+                      v-if="row.minutes > 0 || (row.selected && row.selected.length)"
+                      @click="row.minutes = 0; row.hours = 0; row.selected = []"
+                      class="text-xs text-gray-500 underline"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </td>
+                <td class="px-4 py-2">
+                  <select v-model="row.location" :disabled="row.minutes === 0" class="px-2 py-1 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-400">
+                    <option value="Home">Home</option>
+                    <option value="Office">Office</option>
+                    <option value="GP">GP</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex space-x-3 pt-4">
+          <button type="button" @click="closeIndividualModal" class="flex-1 btn-secondary">Cancel</button>
+          <button type="button" @click="saveIndividualHours" :disabled="isSavingIndividual" class="flex-1 btn-primary">
+            <span v-if="isSavingIndividual">Saving...</span>
+            <span v-else>Save</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
   </BaseLayout>
 </template>
 
@@ -313,7 +420,8 @@ import BaseLayout from '@/components/BaseLayout.vue'
 import { useParticipantsStore } from '@/stores/participants'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
-import type { Participant } from '@/types'
+import type { Participant, IndividualHourEntry, IndividualLocation } from '@/types'
+import { apiService } from '@/services/apiService'
 
 const participantsStore = useParticipantsStore()
 const authStore = useAuthStore()
@@ -333,6 +441,13 @@ const deletingParticipant = ref<Participant | null>(null)
 const isSaving = ref(false)
 const isDeleting = ref(false)
 const displayLimit = ref(2000)
+
+// Individual hours modal state
+const showIndividual = ref(false)
+const individualMonth = ref<string>('')
+const individualRows = ref<Array<{ date: string; minutes: number; hours: number; location: IndividualLocation; selected: number[] }>>([])
+const selectedIndividualParticipant = ref<Participant | null>(null)
+const isSavingIndividual = ref(false)
 
 // Computed properties
 const participants = computed(() => participantsStore.participants)
@@ -559,4 +674,107 @@ watch(() => authStore.currentBranch, (newBranch, oldBranch) => {
     loadData()
   }
 }, { immediate: false })
+
+// Helpers for Individual Hours
+const getYearMonth = (d = new Date()) => {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  return `${y}-${m}`
+}
+
+const daysInMonth = (ym: string): string[] => {
+  const [yStr, mStr] = ym.split('-')
+  const y = parseInt(yStr, 10)
+  const m = parseInt(mStr, 10)
+  const lastDay = new Date(y, m, 0).getDate()
+  const dates: string[] = []
+  for (let d = 1; d <= lastDay; d++) {
+    dates.push(`${ym}-${String(d).padStart(2, '0')}`)
+  }
+  return dates
+}
+
+const hourOptions = [30, 60, 90, 120] // minutes for 0.5, 1, 1.5, 2
+
+const openIndividualHours = async (participant: Participant) => {
+  selectedIndividualParticipant.value = participant
+  individualMonth.value = getYearMonth()
+  await buildIndividualRows()
+  showIndividual.value = true
+}
+
+const buildIndividualRows = async () => {
+  const p = selectedIndividualParticipant.value
+  const branchId = authStore.currentBranch?.id
+  if (!p || !branchId || !individualMonth.value) return
+
+  // Start with all dates defaulting to 0 minutes and Home
+  const baseRows = daysInMonth(individualMonth.value).map(d => ({ date: d, minutes: 0, hours: 0, location: 'Home' as IndividualLocation, selected: [] as number[] }))
+
+  try {
+    const resp: any = await apiService.individualHours.getForMonth(p.id, branchId, individualMonth.value)
+    if (resp.success && Array.isArray(resp.entries)) {
+      const map = new Map(resp.entries.map((e: any) => [e.entry_date, e]))
+      individualRows.value = baseRows.map(row => {
+        const found = map.get(row.date)
+        return found
+          ? { date: row.date, minutes: found.total_minutes, hours: +(found.total_minutes / 60).toFixed(2), location: found.location as IndividualLocation, selected: [] as number[] }
+          : row
+      })
+    } else {
+      individualRows.value = baseRows
+    }
+  } catch (e) {
+    console.error('Failed to load individual hours', e)
+    individualRows.value = baseRows
+  }
+}
+
+watch(individualMonth, async () => {
+  if (showIndividual.value) {
+    await buildIndividualRows()
+  }
+})
+
+const saveIndividualHours = async () => {
+  const p = selectedIndividualParticipant.value
+  const branchId = authStore.currentBranch?.id
+  if (!p || !branchId) return
+
+  // Only send rows with minutes > 0
+  const entries: IndividualHourEntry[] = individualRows.value
+    .filter(r => r.minutes > 0)
+    .map(r => ({
+      participant_id: p.id,
+      branch_id: branchId,
+      entry_date: r.date,
+      total_minutes: r.minutes,
+      location: r.location
+    }))
+
+  isSavingIndividual.value = true
+  try {
+    const resp: any = await apiService.individualHours.saveForMonth(p.id, branchId, individualMonth.value, entries)
+    if (resp.success) {
+      appStore.showSuccess('Individual hours saved')
+      showIndividual.value = false
+    } else {
+      appStore.showError(resp.message || 'Failed to save individual hours')
+    }
+  } catch (e) {
+    console.error('Save individual hours error', e)
+    appStore.showError('An error occurred while saving')
+  } finally {
+    isSavingIndividual.value = false
+  }
+}
+
+const closeIndividualModal = () => {
+  showIndividual.value = false
+  selectedIndividualParticipant.value = null
+}
 </script>
+
+<style scoped>
+.touch-target { min-width: 36px; min-height: 36px; }
+</style>

@@ -130,6 +130,24 @@ export interface DashboardResponse {
   message?: string
 }
 
+// Individual Hours Types
+export type IndividualLocation = 'Home' | 'Office' | 'GP' | 'Other'
+
+export interface IndividualHourEntry {
+  id?: number
+  participant_id: number
+  branch_id: number
+  entry_date: string
+  total_minutes: number // 30,60,90,120,150
+  location: IndividualLocation
+}
+
+export interface IndividualHoursResponse {
+  success: boolean
+  entries?: IndividualHourEntry[]
+  message?: string
+}
+
 // Time Management Types
 export interface TimePeriod {
   name: 'All' | 'Morning' | 'Afternoon' | 'Evening'

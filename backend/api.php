@@ -1,4 +1,6 @@
 <?php
+// Centralize CORS and preflight handling in config.php to avoid
+// wildcard origins when credentials are included.
 require_once 'config.php';
 
 // Parse the request URI to get the endpoint
@@ -80,6 +82,10 @@ switch ($endpoint) {
         
     case 'branches':
         handleBranches();
+        break;
+    
+    case 'individual-hours':
+        handleIndividualHours();
         break;
         
     default:
@@ -1628,6 +1634,119 @@ function handleBranches() {
     } catch (Exception $e) {
         error_log('Branches error: ' . $e->getMessage());
         sendResponse(['success' => false, 'message' => 'Failed to fetch branches'], 500);
+    }
+}
+
+// Individual Hours handler (personal practice entries)
+function handleIndividualHours() {
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        $participant_id = isset($_GET['participant_id']) ? (int)$_GET['participant_id'] : null;
+        $branch_id = isset($_GET['branch_id']) ? (int)$_GET['branch_id'] : null;
+        $month = $_GET['month'] ?? '';
+
+        if (!$participant_id || !$branch_id || empty($month)) {
+            sendResponse(['success' => false, 'message' => 'participant_id, branch_id and month are required'], 400);
+        }
+
+        // Expect month as YYYY-MM
+        if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
+            sendResponse(['success' => false, 'message' => 'Invalid month format. Use YYYY-MM'], 400);
+        }
+
+        try {
+            $rows = fetchAll(
+                "SELECT id, participant_id, branch_id, entry_date, total_minutes, location, created_at, updated_at
+                 FROM medt_individual_hours
+                 WHERE participant_id = ? AND branch_id = ? AND DATE_FORMAT(entry_date, '%Y-%m') = ?
+                 ORDER BY entry_date",
+                [$participant_id, $branch_id, $month],
+                'iis'
+            );
+
+            // Map to a simple array for frontend
+            $entries = array_map(function($r) {
+                return [
+                    'id' => (int)$r['id'],
+                    'participant_id' => (int)$r['participant_id'],
+                    'branch_id' => (int)$r['branch_id'],
+                    'entry_date' => $r['entry_date'],
+                    'total_minutes' => (int)$r['total_minutes'],
+                    'location' => $r['location']
+                ];
+            }, $rows);
+
+            sendResponse(['success' => true, 'entries' => $entries]);
+        } catch (Exception $e) {
+            error_log('IndividualHours GET error: ' . $e->getMessage());
+            sendResponse(['success' => false, 'message' => 'Failed to fetch individual hours'], 500);
+        }
+    } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!$input) {
+            sendResponse(['success' => false, 'message' => 'Invalid JSON'], 400);
+        }
+
+        $missing = validateRequired($input, ['participant_id', 'branch_id', 'month', 'entries']);
+        if (!empty($missing)) {
+            sendResponse(['success' => false, 'message' => 'Missing required fields: ' . implode(', ', $missing)], 400);
+        }
+
+        $participant_id = (int)$input['participant_id'];
+        $branch_id = (int)$input['branch_id'];
+        $month = $input['month'];
+        $entries = is_array($input['entries']) ? $input['entries'] : [];
+
+        if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
+            sendResponse(['success' => false, 'message' => 'Invalid month format. Use YYYY-MM'], 400);
+        }
+
+        // Validate entries: each should have entry_date (YYYY-MM-DD within month) and a valid location
+        $allowed_locations = ['Home','Office','GP','Other'];
+
+        foreach ($entries as $entry) {
+            if (!isset($entry['entry_date'], $entry['total_minutes'])) {
+                sendResponse(['success' => false, 'message' => 'Each entry must include entry_date and total_minutes'], 400);
+            }
+            $date = $entry['entry_date'];
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || substr($date, 0, 7) !== $month) {
+                sendResponse(['success' => false, 'message' => 'Entry date must be in the selected month'], 400);
+            }
+            // Allow any non-negative integer minutes
+            $minutes = (int)$entry['total_minutes'];
+            if ($minutes < 0) {
+                sendResponse(['success' => false, 'message' => 'total_minutes must be a non-negative value'], 400);
+            }
+            $location = isset($entry['location']) ? $entry['location'] : 'Home';
+            if (!in_array($location, $allowed_locations)) {
+                sendResponse(['success' => false, 'message' => 'Invalid location value'], 400);
+            }
+        }
+
+        try {
+            // Replace strategy: delete existing entries for the participant+branch+month, then insert new ones (>0 minutes)
+            executeQuery(
+                "DELETE FROM medt_individual_hours WHERE participant_id = ? AND branch_id = ? AND DATE_FORMAT(entry_date, '%Y-%m') = ?",
+                [$participant_id, $branch_id, $month],
+                'iis'
+            );
+
+            // Insert new entries
+            foreach ($entries as $e) {
+                $loc = isset($e['location']) ? $e['location'] : 'Home';
+                executeInsert(
+                    "INSERT INTO medt_individual_hours (participant_id, branch_id, entry_date, total_minutes, location) VALUES (?, ?, ?, ?, ?)",
+                    [$participant_id, $branch_id, $e['entry_date'], (int)$e['total_minutes'], $loc],
+                    'iisis'
+                );
+            }
+
+            sendResponse(['success' => true, 'message' => 'Individual hours saved']);
+        } catch (Exception $e) {
+            error_log('IndividualHours POST error: ' . $e->getMessage());
+            sendResponse(['success' => false, 'message' => 'Failed to save individual hours'], 500);
+        }
+    } else {
+        sendResponse(['success' => false, 'message' => 'Method not allowed for /api/individual-hours'], 405);
     }
 }
 
