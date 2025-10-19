@@ -1701,7 +1701,7 @@ function handleIndividualHours() {
         }
 
         // Validate entries: each should have entry_date (YYYY-MM-DD within month) and a valid location
-        $allowed_locations = ['Home','Office','GP','Other'];
+        $allowed_locations = ['GP','Home','Office','Other'];
 
         foreach ($entries as $entry) {
             if (!isset($entry['entry_date'], $entry['total_minutes'])) {
@@ -1716,7 +1716,7 @@ function handleIndividualHours() {
             if ($minutes < 0) {
                 sendResponse(['success' => false, 'message' => 'total_minutes must be a non-negative value'], 400);
             }
-            $location = isset($entry['location']) ? $entry['location'] : 'Home';
+            $location = isset($entry['location']) ? $entry['location'] : 'GP';
             if (!in_array($location, $allowed_locations)) {
                 sendResponse(['success' => false, 'message' => 'Invalid location value'], 400);
             }
@@ -1732,7 +1732,7 @@ function handleIndividualHours() {
 
             // Insert new entries
             foreach ($entries as $e) {
-                $loc = isset($e['location']) ? $e['location'] : 'Home';
+                $loc = isset($e['location']) ? $e['location'] : 'GP';
                 executeInsert(
                     "INSERT INTO medt_individual_hours (participant_id, branch_id, entry_date, total_minutes, location) VALUES (?, ?, ?, ?, ?)",
                     [$participant_id, $branch_id, $e['entry_date'], (int)$e['total_minutes'], $loc],

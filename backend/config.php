@@ -1,11 +1,32 @@
 <?php
 // MySQLi Version - No PDO Required!
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+
+// CORS (duplicate safety with api.php; consistent values)
+// Allow overriding via env var ALLOWED_ORIGINS (comma-separated)
+$env_origins = getenv('ALLOWED_ORIGINS');
+$allowed_origins = $env_origins
+    ? array_filter(array_map('trim', explode(',', $env_origins)))
+    : [
+        'http://localhost:8080',
+        'http://127.0.0.1:8080',
+        // Add production origins here as needed, e.g. 'https://yourdomain.com'
+    ];
+
+$request_origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if ($request_origin && in_array($request_origin, $allowed_origins, true)) {
+    header('Access-Control-Allow-Origin: ' . $request_origin);
+    header('Vary: Origin');
+    header('Access-Control-Allow-Credentials: true');
+} else {
+    header('Access-Control-Allow-Origin: *');
+}
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('Access-Control-Max-Age: 86400');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
     exit(0);
 }
 

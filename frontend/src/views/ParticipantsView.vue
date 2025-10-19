@@ -342,23 +342,39 @@
         </div>
 
         <!-- Month selector -->
-        <div class="mb-4 flex items-center space-x-3">
-          <label class="text-sm text-gray-700">Select Month</label>
-          <input type="month" v-model="individualMonth" class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" />
+        <div class="mb-4 flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <label class="text-sm text-gray-700">Select Month</label>
+            <input type="month" v-model="individualMonth" class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" />
+          </div>
+          <div class="text-sm font-semibold text-primary">
+            Total: {{ totalIndividualHours }}h
+          </div>
         </div>
 
         <div class="overflow-auto max-h-[60vh] border rounded-xl">
           <table class="min-w-full text-sm">
             <thead class="bg-gray-50 sticky top-0">
               <tr>
-                <th class="text-left px-4 py-2 font-medium text-gray-700">Date</th>
+                <th class="text-left px-4 py-2 font-medium text-gray-700">Date & Location</th>
                 <th class="text-left px-4 py-2 font-medium text-gray-700">Total Hours</th>
-                <th class="text-left px-4 py-2 font-medium text-gray-700">Location</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="row in individualRows" :key="row.date" class="border-t">
-                <td class="px-4 py-2 text-gray-800">{{ row.date }}</td>
+                <td class="px-4 py-2">
+                  <div class="space-y-2">
+                    <div class="inline-flex items-center justify-center w-8 h-8 bg-primary/10 text-primary font-bold rounded-lg">
+                      {{ new Date(row.date).getDate()}}
+                    </div>
+                    <select v-model="row.location" :disabled="row.minutes === 0" class="w-full px-2 py-1 border border-gray-300 rounded-lg text-xs disabled:bg-gray-100 disabled:text-gray-400">
+                      <option value="GP">G.Padasal</option>
+                      <option value="Home">Home</option>
+                      <option value="Office">Office</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </td>
                 <td class="px-4 py-2">
                   <div class="flex items-center space-x-3 flex-wrap gap-y-2">
                     <label v-for="opt in hourOptions" :key="opt" class="inline-flex items-center space-x-1">
@@ -372,11 +388,13 @@
                     </label>
                     <input
                       type="number"
-                      class="w-24 px-2 py-1 border border-gray-300 rounded-lg text-sm"
+                      class="w-12 px-1 border border-gray-200 font-bold align-right rounded-lg text-sm"
                       v-model.number="row.hours"
                       min="0"
                       step="0.1"
+
                       placeholder="hours"
+                      readonly
                       @input="row.minutes = Math.max(0, Math.round(((row.hours || 0) * 60)))"
                     />
                     <button
@@ -387,14 +405,6 @@
                       Clear
                     </button>
                   </div>
-                </td>
-                <td class="px-4 py-2">
-                  <select v-model="row.location" :disabled="row.minutes === 0" class="px-2 py-1 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-400">
-                    <option value="Home">Home</option>
-                    <option value="Office">Office</option>
-                    <option value="GP">GP</option>
-                    <option value="Other">Other</option>
-                  </select>
                 </td>
               </tr>
             </tbody>
@@ -479,6 +489,13 @@ const getParticipantStats = (participant: any) => {
     totalHours: participant.total_hours?.toFixed(1) || '0.0'
   }
 }
+
+const totalIndividualHours = computed(() => {
+  return individualRows.value
+    .filter(row => row.minutes > 0)
+    .reduce((sum, row) => sum + row.hours, 0)
+    .toFixed(2)
+})
 
 // Methods
 const handleSearch = async () => {
@@ -709,7 +726,7 @@ const buildIndividualRows = async () => {
   if (!p || !branchId || !individualMonth.value) return
 
   // Start with all dates defaulting to 0 minutes and Home
-  const baseRows = daysInMonth(individualMonth.value).map(d => ({ date: d, minutes: 0, hours: 0, location: 'Home' as IndividualLocation, selected: [] as number[] }))
+  const baseRows = daysInMonth(individualMonth.value).map(d => ({ date: d, minutes: 0, hours: 0, location: 'GP' as IndividualLocation, selected: [] as number[] }))
 
   try {
     const resp: any = await apiService.individualHours.getForMonth(p.id, branchId, individualMonth.value)

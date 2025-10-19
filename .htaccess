@@ -13,7 +13,7 @@ RewriteEngine On
 </FilesMatch>
 
 # Block specific sensitive JSON files (but allow manifest.json, etc.)
-<FilesMatch "^(package|package-lock|tsconfig|vite\.config|\.eslintrc)\.json$">
+<FilesMatch "^(package|package-lock|tsconfig|vite\.config|\.eslintrc)\.$">
     Order Allow,Deny
     Deny from all
 </FilesMatch>

@@ -602,4 +602,17 @@ export const mockApi = {
       }
     }
   }
+  ,
+  // Individual Hours endpoints (mock)
+  individualHours: {
+    async getForMonth(participantId: number, branchId: number, month: string): Promise<any> {
+      await simulateDelay(100, 200)
+      // Return empty by default in mock
+      return { success: true, entries: [] }
+    },
+    async saveForMonth(participantId: number, branchId: number, month: string, entries: any[]): Promise<any> {
+      await simulateDelay(100, 200)
+      return { success: true, message: 'Saved (mock)' }
+    }
+  }
 }

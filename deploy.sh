@@ -288,7 +288,7 @@ else
                       -T "$file" \
                       "ftp://$ENCODED_USER:$ENCODED_PASS@$FTP_HOST$remote_path"; then
                 echo -e "${RED}Failed to upload: $relative_path${NC}"
-                return 1
+                exit 1
             fi
         done
     fi
@@ -318,7 +318,7 @@ else
                           -T "$file" \
                           "ftp://$ENCODED_USER:$ENCODED_PASS@$FTP_HOST$remote_path"; then
                     echo -e "${RED}Failed to upload: $relative_path${NC}"
-                    return 1
+                    exit 1
                 fi
             fi
         done

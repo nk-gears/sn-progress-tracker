@@ -64,6 +64,22 @@ CREATE TABLE medt_meditation_sessions (
     INDEX idx_participant_date (participant_id, session_date)
 );
 
+-- Individual hours table (personal practice not tied to branch sessions)
+CREATE TABLE IF NOT EXISTS medt_individual_hours (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    participant_id INT NOT NULL,
+    branch_id INT NOT NULL,
+    entry_date DATE NOT NULL,
+    total_minutes INT NOT NULL,
+    location ENUM('GP','Home','Office','Other') NOT NULL DEFAULT 'GP',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (participant_id) REFERENCES medt_participants(id) ON DELETE CASCADE,
+    FOREIGN KEY (branch_id) REFERENCES medt_branches(id) ON DELETE CASCADE,
+    UNIQUE KEY uniq_participant_date (participant_id, entry_date),
+    INDEX idx_branch_date (branch_id, entry_date)
+);
+
 -- Insert sample data
 INSERT INTO medt_branches (name, location) VALUES
 ('Chennai Central Branch', 'Chennai, Tamil Nadu'),

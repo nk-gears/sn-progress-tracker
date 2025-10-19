@@ -131,7 +131,7 @@ export interface DashboardResponse {
 }
 
 // Individual Hours Types
-export type IndividualLocation = 'Home' | 'Office' | 'GP' | 'Other'
+export type IndividualLocation = 'GP' |'Home' | 'Office'   | 'Other'
 
 export interface IndividualHourEntry {
   id?: number
