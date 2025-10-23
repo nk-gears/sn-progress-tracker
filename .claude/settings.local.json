@@ -15,7 +15,15 @@
       "Bash(npm run preview:*)",
       "Bash(lsof:*)",
       "Bash(kill:*)",
-      "WebFetch(domain:happy-village.org)"
+      "WebFetch(domain:happy-village.org)",
+      "Read(//Users/Nirmal/Documents/**)",
+      "Bash(ls:*)",
+      "Bash(lftp:*)",
+      "Bash(source deploy.config.sh)",
+      "Bash(echo:*)",
+      "Bash(./backup-remote.sh:*)",
+      "Bash(cat:*)",
+      "Bash(timeout 10 curl:*)"
     ],
     "deny": []
   }

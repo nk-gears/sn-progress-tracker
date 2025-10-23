@@ -29,10 +29,10 @@ export const useSessionsStore = defineStore('sessions', () => {
   const isSelecting = ref(false)
   
   const timePeriods = computed(() => [
-    { name: 'Morning', start: '06:00', end: '12:00' },
+    { name: 'Morning', start: '05:00', end: '12:00' },
     { name: 'Afternoon', start: '12:00', end: '17:00' },
     { name: 'Evening', start: '17:00', end: '22:00' },
-    { name: 'All', start: '06:00', end: '22:00' }
+    { name: 'All', start: '05:00', end: '22:00' }
   ])
   
   const filteredTimeSlots = computed(() => {

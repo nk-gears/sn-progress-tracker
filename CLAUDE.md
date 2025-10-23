@@ -146,7 +146,7 @@ VITE_ENABLE_MOCK_DELAY=false
 - **Validation**: Both frontend and backend validation
 
 ### Time Period Classification
-- **Morning**: 06:00-11:59
+- **Morning**: 05:00-11:59
 - **Afternoon**: 12:00-16:59  
 - **Evening**: 17:00-21:59
 - **All**: No time filtering (default selection)

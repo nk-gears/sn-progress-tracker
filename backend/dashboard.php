@@ -76,7 +76,7 @@ try {
             SELECT DISTINCT
                 session_date, start_time, duration_minutes,
                 CASE 
-                    WHEN TIME(start_time) >= '06:00' AND TIME(start_time) < '12:00' THEN 'Morning'
+                    WHEN TIME(start_time) >= '05:00' AND TIME(start_time) < '12:00' THEN 'Morning'
                     WHEN TIME(start_time) >= '12:00' AND TIME(start_time) < '17:00' THEN 'Afternoon'
                     WHEN TIME(start_time) >= '17:00' AND TIME(start_time) <= '22:00' THEN 'Evening'
                     ELSE 'Other'
