@@ -356,7 +356,7 @@
           <table class="min-w-full text-sm">
             <thead class="bg-gray-50 sticky top-0">
               <tr>
-                <th class="text-left px-4 py-2 font-medium text-gray-700">Date & Location</th>
+                <th class="text-left px-4 py-2 font-medium text-gray-700">Date</th>
                 <th class="text-left px-4 py-2 font-medium text-gray-700">Total Hours</th>
               </tr>
             </thead>
@@ -367,7 +367,8 @@
                     <div class="inline-flex items-center justify-center w-8 h-8 bg-primary/10 text-primary font-bold rounded-lg">
                       {{ new Date(row.date).getDate()}}
                     </div>
-                    <select v-model="row.location" :disabled="row.minutes === 0" class="w-full px-2 py-1 border border-gray-300 rounded-lg text-xs disabled:bg-gray-100 disabled:text-gray-400">
+                    <!-- Location dropdown temporarily hidden -->
+                    <select v-if="false" v-model="row.location" :disabled="row.minutes === 0" class="w-full px-2 py-1 border border-gray-300 rounded-lg text-xs disabled:bg-gray-100 disabled:text-gray-400">
                       <option value="GP">G.Padasal</option>
                       <option value="Home">Home</option>
                       <option value="Office">Office</option>
@@ -455,7 +456,7 @@ const displayLimit = ref(2000)
 // Individual hours modal state
 const showIndividual = ref(false)
 const individualMonth = ref<string>('')
-const individualRows = ref<Array<{ date: string; minutes: number; hours: number; location: IndividualLocation; selected: number[] }>>([])
+const individualRows = ref<Array<{ date: string; minutes: number; hours: number; location: IndividualLocation; selected: number[]; wasLoaded?: boolean }>>([])
 const selectedIndividualParticipant = ref<Participant | null>(null)
 const isSavingIndividual = ref(false)
 
@@ -726,7 +727,7 @@ const buildIndividualRows = async () => {
   if (!p || !branchId || !individualMonth.value) return
 
   // Start with all dates defaulting to 0 minutes and Home
-  const baseRows = daysInMonth(individualMonth.value).map(d => ({ date: d, minutes: 0, hours: 0, location: 'GP' as IndividualLocation, selected: [] as number[] }))
+  const baseRows = daysInMonth(individualMonth.value).map(d => ({ date: d, minutes: 0, hours: 0, location: 'GP' as IndividualLocation, selected: [] as number[], wasLoaded: false }))
 
   try {
     const resp: any = await apiService.individualHours.getForMonth(p.id, branchId, individualMonth.value)
@@ -735,7 +736,7 @@ const buildIndividualRows = async () => {
       individualRows.value = baseRows.map(row => {
         const found = map.get(row.date)
         return found
-          ? { date: row.date, minutes: found.total_minutes, hours: +(found.total_minutes / 60).toFixed(2), location: found.location as IndividualLocation, selected: [] as number[] }
+          ? { date: row.date, minutes: found.total_minutes, hours: +(found.total_minutes / 60).toFixed(2), location: found.location as IndividualLocation, selected: [] as number[], wasLoaded: true }
           : row
       })
     } else {
@@ -758,9 +759,9 @@ const saveIndividualHours = async () => {
   const branchId = authStore.currentBranch?.id
   if (!p || !branchId) return
 
-  // Only send rows with minutes > 0
+  // Save rows with minutes > 0, OR rows that were loaded but now have 0 (deletions)
   const entries: IndividualHourEntry[] = individualRows.value
-    .filter(r => r.minutes > 0)
+    .filter(r => r.minutes > 0 || (r.minutes === 0 && r.wasLoaded))
     .map(r => ({
       participant_id: p.id,
       branch_id: branchId,
@@ -768,6 +769,13 @@ const saveIndividualHours = async () => {
       total_minutes: r.minutes,
       location: r.location
     }))
+
+  // If no entries to save, just close the modal
+  if (entries.length === 0) {
+    appStore.showSuccess('Changes saved')
+    showIndividual.value = false
+    return
+  }
 
   isSavingIndividual.value = true
   try {

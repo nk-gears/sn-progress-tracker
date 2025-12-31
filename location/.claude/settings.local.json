@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.brahmakumaris.com)",
+      "Bash(open index.html)",
+      "Bash(npm run dev:*)",
+      "Bash(open http://localhost:5175/)",
+      "Bash(npm install:*)"
+    ]
+  }
+}

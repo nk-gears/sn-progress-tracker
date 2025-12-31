@@ -1,0 +1,355 @@
+{
+  "success": true,
+  "data": {
+    "states": [
+      {
+        "id": 1,
+        "name": "Tamil Nadu",
+        "districts": [
+          {
+            "id": 1,
+            "name": "Chennai",
+            "state_id": 1,
+            "centers": [
+              {
+                "id": 1,
+                "name": "Brahma Kumaris Raja Yoga Center - Chennai Central",
+                "address": "123 Anna Salai, Mount Road, Chennai, Tamil Nadu 600002",
+                "district_id": 1,
+                "latitude": 13.0827,
+                "longitude": 80.2707,
+                "phone": "+91 44 1234 5678",
+                "email": "chennai.central@brahmakumaris.com",
+                "timings": "6:00 AM - 8:00 PM",
+                "services": ["Meditation Classes", "Raja Yoga", "Spiritual Retreats"]
+              },
+              {
+                "id": 2,
+                "name": "Brahma Kumaris - T. Nagar",
+                "address": "456 Usman Road, T. Nagar, Chennai, Tamil Nadu 600017",
+                "district_id": 1,
+                "latitude": 13.0418,
+                "longitude": 80.2341,
+                "phone": "+91 44 2345 6789",
+                "email": "tnagar@brahmakumaris.com",
+                "timings": "6:00 AM - 8:00 PM",
+                "services": ["Meditation Classes", "Raja Yoga"]
+              },
+              {
+                "id": 3,
+                "name": "Brahma Kumaris - Adyar",
+                "address": "789 Lattice Bridge Road, Adyar, Chennai, Tamil Nadu 600020",
+                "district_id": 1,
+                "latitude": 13.0067,
+                "longitude": 80.2571,
+                "phone": "+91 44 3456 7890",
+                "email": "adyar@brahmakumaris.com",
+                "timings": "6:00 AM - 8:00 PM",
+                "services": ["Meditation Classes", "Raja Yoga", "Youth Programs"]
+              },
+              {
+                "id": 4,
+                "name": "Brahma Kumaris - Velachery",
+                "address": "321 Velachery Main Road, Chennai, Tamil Nadu 600042",
+                "district_id": 1,
+                "latitude": 12.9750,
+                "longitude": 80.2220,
+                "phone": "+91 44 4567 8901",
+                "email": "velachery@brahmakumaris.com",
+                "timings": "6:00 AM - 8:00 PM",
+                "services": ["Meditation Classes", "Raja Yoga"]
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "name": "Coimbatore",
+            "state_id": 1,
+            "centers": [
+              {
+                "id": 5,
+                "name": "Brahma Kumaris - Coimbatore",
+                "address": "111 Avinashi Road, Coimbatore, Tamil Nadu 641018",
+                "district_id": 2,
+                "latitude": 11.0168,
+                "longitude": 76.9558,
+                "phone": "+91 422 1234 567",
+                "email": "coimbatore@brahmakumaris.com",
+                "timings": "6:00 AM - 8:00 PM",
+                "services": ["Meditation Classes", "Raja Yoga", "Corporate Programs"]
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "name": "Madurai",
+            "state_id": 1,
+            "centers": [
+              {
+                "id": 6,
+                "name": "Brahma Kumaris - Madurai",
+                "address": "222 West Veli Street, Madurai, Tamil Nadu 625001",
+                "district_id": 3,
+                "latitude": 9.9252,
+                "longitude": 78.1198,
+                "phone": "+91 452 2345 678",
+                "email": "madurai@brahmakumaris.com",
+                "timings": "6:00 AM - 8:00 PM",
+                "services": ["Meditation Classes", "Raja Yoga"]
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "name": "Tiruchirappalli",
+            "state_id": 1,
+            "centers": [
+              {
+                "id": 7,
+                "name": "Brahma Kumaris - Trichy",
+                "address": "333 Salai Road, Tiruchirappalli, Tamil Nadu 620001",
+                "district_id": 4,
+                "latitude": 10.7905,
+                "longitude": 78.7047,
+                "phone": "+91 431 3456 789",
+                "email": "trichy@brahmakumaris.com",
+                "timings": "6:00 AM - 8:00 PM",
+                "services": ["Meditation Classes", "Raja Yoga", "Women's Programs"]
+              }
+            ]
+          },
+          {
+            "id": 5,
+            "name": "Salem",
+            "state_id": 1,
+            "centers": [
+              {
+                "id": 8,
+                "name": "Brahma Kumaris - Salem",
+                "address": "444 Cherry Road, Salem, Tamil Nadu 636001",
+                "district_id": 5,
+                "latitude": 11.6643,
+                "longitude": 78.1460,
+                "phone": "+91 427 4567 890",
+                "email": "salem@brahmakumaris.com",
+                "timings": "6:00 AM - 8:00 PM",
+                "services": ["Meditation Classes", "Raja Yoga"]
+              }
+            ]
+          },
+          {
+            "id": 6,
+            "name": "Tirunelveli",
+            "state_id": 1,
+            "centers": []
+          },
+          {
+            "id": 7,
+            "name": "Vellore",
+            "state_id": 1,
+            "centers": []
+          },
+          {
+            "id": 8,
+            "name": "Erode",
+            "state_id": 1,
+            "centers": []
+          },
+          {
+            "id": 9,
+            "name": "Thanjavur",
+            "state_id": 1,
+            "centers": []
+          },
+          {
+            "id": 10,
+            "name": "Kanchipuram",
+            "state_id": 1,
+            "centers": []
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "name": "South Kerala",
+        "districts": [
+          {
+            "id": 11,
+            "name": "Thiruvananthapuram",
+            "state_id": 2,
+            "centers": [
+              {
+                "id": 9,
+                "name": "Brahma Kumaris - Thiruvananthapuram Central",
+                "address": "555 MG Road, Thiruvananthapuram, Kerala 695001",
+                "district_id": 11,
+                "latitude": 8.5241,
+                "longitude": 76.9366,
+                "phone": "+91 471 2345 678",
+                "email": "tvm.central@brahmakumaris.com",
+                "timings": "6:00 AM - 8:00 PM",
+                "services": ["Meditation Classes", "Raja Yoga", "Spiritual Retreats"]
+              },
+              {
+                "id": 10,
+                "name": "Brahma Kumaris - Thiruvananthapuram East",
+                "address": "666 Kowdiar Road, Thiruvananthapuram, Kerala 695003",
+                "district_id": 11,
+                "latitude": 8.5324,
+                "longitude": 76.9496,
+                "phone": "+91 471 3456 789",
+                "email": "tvm.east@brahmakumaris.com",
+                "timings": "6:00 AM - 8:00 PM",
+                "services": ["Meditation Classes", "Raja Yoga"]
+              }
+            ]
+          },
+          {
+            "id": 12,
+            "name": "Kollam",
+            "state_id": 2,
+            "centers": [
+              {
+                "id": 11,
+                "name": "Brahma Kumaris - Kollam",
+                "address": "777 Main Road, Kollam, Kerala 691001",
+                "district_id": 12,
+                "latitude": 8.8932,
+                "longitude": 76.6141,
+                "phone": "+91 474 2345 678",
+                "email": "kollam@brahmakumaris.com",
+                "timings": "6:00 AM - 8:00 PM",
+                "services": ["Meditation Classes", "Raja Yoga", "Family Programs"]
+              }
+            ]
+          },
+          {
+            "id": 13,
+            "name": "Pathanamthitta",
+            "state_id": 2,
+            "centers": []
+          },
+          {
+            "id": 14,
+            "name": "Alappuzha",
+            "state_id": 2,
+            "centers": [
+              {
+                "id": 12,
+                "name": "Brahma Kumaris - Alappuzha",
+                "address": "888 Beach Road, Alappuzha, Kerala 688001",
+                "district_id": 14,
+                "latitude": 9.4981,
+                "longitude": 76.3388,
+                "phone": "+91 477 2345 678",
+                "email": "alappuzha@brahmakumaris.com",
+                "timings": "6:00 AM - 8:00 PM",
+                "services": ["Meditation Classes", "Raja Yoga"]
+              }
+            ]
+          },
+          {
+            "id": 15,
+            "name": "Kottayam",
+            "state_id": 2,
+            "centers": [
+              {
+                "id": 13,
+                "name": "Brahma Kumaris - Kottayam",
+                "address": "999 MC Road, Kottayam, Kerala 686001",
+                "district_id": 15,
+                "latitude": 9.5916,
+                "longitude": 76.5222,
+                "phone": "+91 481 2345 678",
+                "email": "kottayam@brahmakumaris.com",
+                "timings": "6:00 AM - 8:00 PM",
+                "services": ["Meditation Classes", "Raja Yoga", "Student Programs"]
+              }
+            ]
+          },
+          {
+            "id": 16,
+            "name": "Idukki",
+            "state_id": 2,
+            "centers": []
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "name": "Puducherry",
+        "districts": [
+          {
+            "id": 17,
+            "name": "Puducherry",
+            "state_id": 3,
+            "centers": [
+              {
+                "id": 14,
+                "name": "Brahma Kumaris - Puducherry White Town",
+                "address": "101 Beach Road, White Town, Puducherry 605001",
+                "district_id": 17,
+                "latitude": 11.9340,
+                "longitude": 79.8306,
+                "phone": "+91 413 2345 678",
+                "email": "pondy.whitetown@brahmakumaris.com",
+                "timings": "6:00 AM - 8:00 PM",
+                "services": ["Meditation Classes", "Raja Yoga", "Beach Meditation"]
+              },
+              {
+                "id": 15,
+                "name": "Brahma Kumaris - Puducherry Lawspet",
+                "address": "202 ECR Main Road, Lawspet, Puducherry 605008",
+                "district_id": 17,
+                "latitude": 11.9416,
+                "longitude": 79.8083,
+                "phone": "+91 413 3456 789",
+                "email": "pondy.lawspet@brahmakumaris.com",
+                "timings": "6:00 AM - 8:00 PM",
+                "services": ["Meditation Classes", "Raja Yoga"]
+              }
+            ]
+          },
+          {
+            "id": 18,
+            "name": "Karaikal",
+            "state_id": 3,
+            "centers": [
+              {
+                "id": 16,
+                "name": "Brahma Kumaris - Karaikal",
+                "address": "303 Main Street, Karaikal, Puducherry 609602",
+                "district_id": 18,
+                "latitude": 10.9254,
+                "longitude": 79.8380,
+                "phone": "+91 4368 234 567",
+                "email": "karaikal@brahmakumaris.com",
+                "timings": "6:00 AM - 8:00 PM",
+                "services": ["Meditation Classes", "Raja Yoga"]
+              }
+            ]
+          },
+          {
+            "id": 19,
+            "name": "Mahe",
+            "state_id": 3,
+            "centers": []
+          },
+          {
+            "id": 20,
+            "name": "Yanam",
+            "state_id": 3,
+            "centers": []
+          }
+        ]
+      }
+    ]
+  },
+  "metadata": {
+    "total_states": 3,
+    "total_districts": 20,
+    "total_centers": 16,
+    "last_updated": "2025-12-31T18:30:00Z",
+    "api_version": "1.0"
+  }
+}
