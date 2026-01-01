@@ -1,5 +1,5 @@
 <template>
-  <nav class="navbar fixed top-0 left-0 right-0 bg-blue-900 shadow-md z-50">
+  <nav class="navbar fixed top-0 left-0 right-0 shadow-md z-50" style="background-color: #0B238F;">
     <div class="container mx-auto px-4">
       <div class="flex items-center justify-between h-20">
         <!-- Logo/Brand -->

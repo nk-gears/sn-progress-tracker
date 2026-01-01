@@ -5,7 +5,10 @@
       "Bash(open index.html)",
       "Bash(npm run dev:*)",
       "Bash(open http://localhost:5175/)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm cache clean:*)",
+      "Bash(pnpm install)",
+      "Bash(pnpm run dev)"
     ]
   }
 }

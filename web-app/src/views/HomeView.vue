@@ -7,46 +7,7 @@
     <HeroSection />
 
     <!-- Find Centre Section -->
-    <section id="find-centre" class="section bg-gray-50">
-      <div class="container mx-auto px-4">
-        <h2 class="section-title">{{ $t('findCentre.title') }}</h2>
-        <p class="section-subtitle">{{ $t('findCentre.subtitle') }}</p>
-
-        <div class="max-w-3xl mx-auto">
-          <div class="content-card">
-            <div class="space-y-4">
-              <select v-model="selectedState" class="form-select" @change="onStateChange">
-                <option value="">{{ $t('findCentre.selectState') }}</option>
-                <option value="tamil-nadu">{{ $t('findCentre.states.tamilNadu') }}</option>
-                <option value="south-kerala">{{ $t('findCentre.states.southKerala') }}</option>
-                <option value="puducherry">{{ $t('findCentre.states.puducherry') }}</option>
-              </select>
-
-              <select v-model="selectedDistrict" class="form-select" :disabled="!selectedState">
-                <option value="">{{ $t('findCentre.selectDistrict') }}</option>
-              </select>
-
-              <select v-model="selectedCentre" class="form-select" :disabled="!selectedDistrict">
-                <option value="">{{ $t('findCentre.selectCentre') }}</option>
-              </select>
-
-              <button @click="useMyLocation" class="btn btn-location w-full bg-blue-600 text-white hover:bg-blue-700">
-                {{ $t('findCentre.useLocation') }}
-              </button>
-            </div>
-          </div>
-
-          <!-- Sample Centre Cards -->
-          <div class="mt-8 space-y-4">
-            <CentreCard
-              v-for="centre in sampleCentres"
-              :key="centre.id"
-              :centre="centre"
-            />
-          </div>
-        </div>
-      </div>
-    </section>
+    <CentreFinder />
 
     <!-- What is Shivanum Naanum Section -->
     <section id="about" class="section">
@@ -117,79 +78,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
 import Navbar from '@/components/Navbar.vue'
 import HeroSection from '@/components/HeroSection.vue'
-import CentreCard from '@/components/CentreCard.vue'
+import CentreFinder from '@/components/CentreFinder.vue'
 import WhatsAppJoinForm from '@/components/WhatsAppJoinForm.vue'
 import FAQSection from '@/components/FAQSection.vue'
 import Footer from '@/components/Footer.vue'
-import type { Centre } from '@/types'
-
-// Form state
-const selectedState = ref('')
-const selectedDistrict = ref('')
-const selectedCentre = ref('')
-
-// Sample centres data
-const sampleCentres = ref<Centre[]>([
-  {
-    id: 1,
-    name: 'West Mambalam, Chennai',
-    address: '203, Murugan illam, chitlapakkam main road, Ganesh Nagar, Selaiyur Chennai 73',
-    district: 'Chennai',
-    state: 'Tamil Nadu',
-    latitude: 13.0418,
-    longitude: 80.2341,
-    phone: '+91-XXXXXXXXXX',
-    distance: 2
-  },
-  {
-    id: 2,
-    name: 'Ashok Nagar, Chennai',
-    address: '13, Vadivel street, Kattabomman block, Jawahar nagar, West Jafferkhanpet, Chennai - 83',
-    district: 'Chennai',
-    state: 'Tamil Nadu',
-    latitude: 13.0358,
-    longitude: 80.2102,
-    phone: '+91-XXXXXXXXXX',
-    distance: 4
-  },
-  {
-    id: 3,
-    name: 'Anna Nagar, Chennai',
-    address: '13, Vadivel street, Kattabomman block, Jawahar nagar, West Jafferkhanpet, Chennai - 83',
-    district: 'Chennai',
-    state: 'Tamil Nadu',
-    latitude: 13.0850,
-    longitude: 80.2101,
-    phone: '+91-XXXXXXXXXX',
-    distance: 4
-  }
-])
-
-const onStateChange = () => {
-  selectedDistrict.value = ''
-  selectedCentre.value = ''
-}
-
-const useMyLocation = () => {
-  if ('geolocation' in navigator) {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        console.log('Location:', position.coords.latitude, position.coords.longitude)
-        // TODO: Calculate distances and sort centres
-        alert('Location detected! Finding nearest centres...')
-      },
-      (error) => {
-        console.error('Location error:', error)
-        alert('Please enable location access to find nearest centres')
-      }
-    )
-  } else {
-    alert('Geolocation is not supported by your browser')
-  }
-}
 </script>
 
 <style scoped>
