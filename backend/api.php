@@ -96,11 +96,15 @@ switch ($endpoint) {
         handleCenterAddresses();
         break;
 
+    case 'whatsapp-link':
+        handleWhatsAppLink();
+        break;
+
     default:
         sendResponse([
             'success' => false,
             'error' => 'Invalid endpoint',
-            'message' => "Endpoint '$endpoint' not found. Available endpoints: auth, participants, sessions, dashboard, profile, onboard, bulk-users, admin-report, branches, event-register, center-addresses",
+            'message' => "Endpoint '$endpoint' not found. Available endpoints: auth, participants, sessions, dashboard, profile, onboard, bulk-users, admin-report, branches, event-register, center-addresses, whatsapp-link",
             'available_endpoints' => [
                 'POST /api/auth - User authentication',
                 'GET /api/participants - Get participants',
@@ -118,7 +122,8 @@ switch ($endpoint) {
                 'POST /api/admin-report - Generate admin reports',
                 'GET /api/branches - Get all branches (public)',
                 'POST /api/event-register - Register for event (public)',
-                'POST /api/center-addresses - Sync/import center addresses (upsert by center_code)'
+                'POST /api/center-addresses - Sync/import center addresses (upsert by center_code)',
+                'GET /api/whatsapp-link - Get active WhatsApp link (public)'
             ]
         ], 404);
 }
@@ -1778,20 +1783,44 @@ function handleEventRegister() {
     }
 
     $input = json_decode(file_get_contents('php://input'), true);
-    $missing = validateRequired($input, ['name', 'mobile', 'centre_id']);
+
+    // Log the incoming payload for debugging
+    error_log('Event register payload: ' . json_encode($input));
+
+    $missing = validateRequired($input, ['name', 'mobile', 'center_code']);
 
     if (!empty($missing)) {
-        sendResponse(['success' => false, 'message' => 'Missing required fields: ' . implode(', ', $missing)], 400);
+        error_log('Missing fields in event registration: ' . implode(', ', $missing));
+        sendResponse([
+            'success' => false,
+            'message' => 'Missing required fields: ' . implode(', ', $missing) . '. Please ensure all fields are filled.',
+            'required_fields' => ['name', 'mobile', 'center_code'],
+            'received' => array_keys($input)
+        ], 400);
         return;
     }
 
     $name = trim($input['name']);
     $mobile = trim($input['mobile']);
-    $centre_id = (int)$input['centre_id'];
+    $center_code = trim($input['center_code']);
 
     // Validate name (only letters and spaces)
+    if (empty($name)) {
+        sendResponse(['success' => false, 'message' => 'Name is required and cannot be empty'], 400);
+        return;
+    }
+
+    if (strlen($name) < 2) {
+        sendResponse(['success' => false, 'message' => 'Name must be at least 2 characters'], 400);
+        return;
+    }
+
     if (!preg_match('/^[A-Za-z\s]+$/', $name)) {
-        sendResponse(['success' => false, 'message' => 'Name can only contain letters and spaces'], 400);
+        sendResponse([
+            'success' => false,
+            'message' => 'Name can only contain letters and spaces',
+            'debug' => ['received_name' => $name, 'validation' => 'regex failed']
+        ], 400);
         return;
     }
 
@@ -1801,12 +1830,12 @@ function handleEventRegister() {
         return;
     }
 
-    // Validate centre exists
+    // Validate and get centre_id from center_code
     try {
         $centre = fetchRow(
-            "SELECT id, name FROM medt_branches WHERE id = ?",
-            [$centre_id],
-            'i'
+            "SELECT id, locality, center_code FROM medt_center_addresses WHERE center_code = ?",
+            [$center_code],
+            's'
         );
 
         if (!$centre) {
@@ -1814,24 +1843,32 @@ function handleEventRegister() {
             return;
         }
 
-        // Insert registration
+        $centre_id = $centre['id'];
+
+        // Log the data being inserted for debugging
+        error_log('Event registration attempt: name=' . $name . ', mobile=' . $mobile . ', centre_id=' . $centre_id);
+
+        // Insert registration with centre_id from medt_center_addresses
         $result = executeInsert(
             "INSERT INTO medt_event_register (name, mobile, centre_id) VALUES (?, ?, ?)",
             [$name, $mobile, $centre_id],
-            'isi'
+            'ssi'
         );
 
         if ($result && $result['insert_id']) {
+            error_log('Event registration successful: id=' . $result['insert_id'] . ', name=' . $name);
             sendResponse([
                 'success' => true,
                 'message' => 'Registration successful! Thank you for registering.',
                 'data' => [
                     'id' => $result['insert_id'],
                     'name' => $name,
-                    'centre' => $centre['name']
+                    'centre_code' => $center_code,
+                    'centre_name' => $centre['locality']
                 ]
             ], 201);
         } else {
+            error_log('Event registration failed: insert returned no ID');
             sendResponse(['success' => false, 'message' => 'Failed to register. Please try again.'], 500);
         }
 
@@ -1841,10 +1878,28 @@ function handleEventRegister() {
     }
 }
 
-// Center Addresses handler - Sync/Import with upsert logic
+// Center Addresses handler - Sync/Import with upsert logic and GET to retrieve all
 function handleCenterAddresses() {
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        try {
+            $centers = fetchAll(
+                "SELECT id, center_code, state, district, locality, address, contact_no, address_contact_verified, latitude_longitude, lat_long_verified, url, verified, last_modified FROM medt_center_addresses ORDER BY state, district, locality"
+            );
+
+            sendResponse([
+                'success' => true,
+                'data' => $centers,
+                'count' => count($centers)
+            ]);
+        } catch (Exception $e) {
+            error_log('Center addresses GET error: ' . $e->getMessage());
+            sendResponse(['success' => false, 'message' => 'Failed to fetch center addresses'], 500);
+        }
+        return;
+    }
+
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        sendResponse(['success' => false, 'message' => 'Only POST method allowed'], 405);
+        sendResponse(['success' => false, 'message' => 'Only POST and GET methods allowed'], 405);
         return;
     }
 
@@ -1878,7 +1933,7 @@ function handleCenterAddresses() {
 
                 // Check if center_code already exists
                 $existingCenter = fetchRow(
-                    "SELECT id FROM center_addresses WHERE center_code = ?",
+                    "SELECT id FROM medt_center_addresses WHERE center_code = ?",
                     [$center_code],
                     's'
                 );
@@ -1907,7 +1962,7 @@ function handleCenterAddresses() {
                         $updateValues[] = $center_code;
                         $types .= 's';
 
-                        $sql = "UPDATE center_addresses SET " . implode(', ', $updateFields) . " WHERE center_code = ?";
+                        $sql = "UPDATE medt_center_addresses SET " . implode(', ', $updateFields) . " WHERE center_code = ?";
                         executeQuery($sql, $updateValues, $types);
                         $results['updated']++;
                     }
@@ -1931,7 +1986,7 @@ function handleCenterAddresses() {
                     }
 
                     $placeholders = str_repeat('?, ', count($fields) - 1) . '?';
-                    $sql = "INSERT INTO center_addresses (" . implode(', ', $fields) . ") VALUES (" . $placeholders . ")";
+                    $sql = "INSERT INTO medt_center_addresses (" . implode(', ', $fields) . ") VALUES (" . $placeholders . ")";
 
                     executeInsert($sql, $values, $types);
                     $results['inserted']++;
@@ -1960,6 +2015,42 @@ function handleCenterAddresses() {
     } catch (Exception $e) {
         error_log('Center addresses error: ' . $e->getMessage());
         sendResponse(['success' => false, 'message' => 'Failed to sync center addresses'], 500);
+    }
+}
+
+// WhatsApp Link handler - Get active WhatsApp link from settings
+function handleWhatsAppLink() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+        sendResponse(['success' => false, 'message' => 'Only GET method allowed'], 405);
+        return;
+    }
+
+    try {
+        // Fetch active WhatsApp link from medt_settings
+        $setting = fetchRow(
+            "SELECT id, key_name, key_value, is_active FROM medt_settings WHERE key_name = ? AND is_active = 1",
+            ['whatsapp-link'],
+            's'
+        );
+
+        if ($setting && !empty($setting['key_value'])) {
+            sendResponse([
+                'success' => true,
+                'data' => [
+                    'link' => $setting['key_value'],
+                    'key' => $setting['key_name']
+                ]
+            ]);
+        } else {
+            sendResponse([
+                'success' => false,
+                'message' => 'WhatsApp link not configured'
+            ], 404);
+        }
+
+    } catch (Exception $e) {
+        error_log('WhatsApp link error: ' . $e->getMessage());
+        sendResponse(['success' => false, 'message' => 'Failed to fetch WhatsApp link'], 500);
     }
 }
 ?>

@@ -1,10 +1,18 @@
 <template>
-  <section id="find-centre" class="section bg-gray-50">
-    <div class="container mx-auto px-4">
+  <section id="find-centre" class="section bg-gray-50 pt-0 -mt-2">
+    <div class="container mx-auto px-0">
       <h2 class="section-title">{{ $t('findCentre.title') }}</h2>
       <p class="section-subtitle">{{ $t('findCentre.subtitle') }}</p>
 
-      <div class="max-w-6xl mx-auto">
+      <!-- Join Event Modal -->
+      <JoinEventModal
+        :is-open="showJoinModal"
+        :centre="selectedCentreForModal"
+        @close="showJoinModal = false"
+        @success="handleJoinSuccess"
+      />
+
+      <div class="max-w-6xl mx-auto px-0">
         <!-- Tab Navigation -->
         <div class="flex border-b border-gray-200 mb-6 overflow-x-auto">
           <button
@@ -245,12 +253,18 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import CentreCard from './CentreCard.vue'
+import JoinEventModal from './JoinEventModal.vue'
+import { getApiUrl } from '@/config'
 import type { Centre } from '@/types'
 
 // Emit event to parent
 const emit = defineEmits<{
   joinNow: [centre: Centre]
 }>()
+
+// Modal state
+const showJoinModal = ref(false)
+const selectedCentreForModal = ref<Centre | undefined>(undefined)
 
 const activeTab = ref<'nearMe' | 'search' | 'browse'>('nearMe')
 const viewMode = ref<'list' | 'map'>('list')
@@ -267,74 +281,103 @@ const mapContainer = ref<HTMLElement | null>(null)
 let map: google.maps.Map | null = null
 let markers: google.maps.Marker[] = []
 
-// Mock data for states and districts
-const mockStates = ref([
-  {
-    id: 1,
-    name: 'Tamil Nadu',
-    districtCount: 3,
-    districts: [
-      {
-        id: 1,
-        name: 'Chennai',
-        centers: [
-          { id: 1, name: 'West Mambalam, Chennai', address: '203, Murugan illam, Chennai 73', district: 'Chennai', state: 'Tamil Nadu', latitude: 13.0418, longitude: 80.2341, phone: '+91-XXXXXXXXXX' },
-          { id: 2, name: 'Ashok Nagar, Chennai', address: '13, Vadivel street, Chennai - 83', district: 'Chennai', state: 'Tamil Nadu', latitude: 13.0358, longitude: 80.2102, phone: '+91-XXXXXXXXXX' },
-          { id: 3, name: 'Anna Nagar, Chennai', address: '13, Vadivel street, Chennai - 83', district: 'Chennai', state: 'Tamil Nadu', latitude: 13.0850, longitude: 80.2101, phone: '+91-XXXXXXXXXX' }
-        ]
-      },
-      {
-        id: 2,
-        name: 'Coimbatore',
-        centers: [
-          { id: 4, name: 'RS Puram, Coimbatore', address: 'Sample Address, Coimbatore', district: 'Coimbatore', state: 'Tamil Nadu', latitude: 11.0168, longitude: 76.9558, phone: '+91-XXXXXXXXXX' }
-        ]
-      },
-      {
-        id: 3,
-        name: 'Madurai',
-        centers: [
-          { id: 5, name: 'Anna Nagar, Madurai', address: 'Sample Address, Madurai', district: 'Madurai', state: 'Tamil Nadu', latitude: 9.9252, longitude: 78.1198, phone: '+91-XXXXXXXXXX' }
-        ]
-      }
-    ]
-  },
-  {
-    id: 2,
-    name: 'South Kerala',
-    districtCount: 2,
-    districts: [
-      {
-        id: 4,
-        name: 'Thiruvananthapuram',
-        centers: [
-          { id: 6, name: 'Kesavadasapuram, TVM', address: 'Sample Address, TVM', district: 'Thiruvananthapuram', state: 'Kerala', latitude: 8.5241, longitude: 76.9366, phone: '+91-XXXXXXXXXX' }
-        ]
-      },
-      {
-        id: 5,
-        name: 'Kollam',
-        centers: [
-          { id: 7, name: 'Main Centre, Kollam', address: 'Sample Address, Kollam', district: 'Kollam', state: 'Kerala', latitude: 8.8932, longitude: 76.6141, phone: '+91-XXXXXXXXXX' }
-        ]
-      }
-    ]
-  },
-  {
-    id: 3,
-    name: 'Puducherry',
-    districtCount: 1,
-    districts: [
-      {
-        id: 6,
-        name: 'Puducherry',
-        centers: [
-          { id: 8, name: 'Main Centre, Puducherry', address: 'Sample Address, Puducherry', district: 'Puducherry', state: 'Puducherry', latitude: 11.9416, longitude: 79.8083, phone: '+91-XXXXXXXXXX' }
-        ]
-      }
-    ]
+// States and districts loaded from API
+const mockStates = ref<any[]>([])
+const isLoadingCenters = ref(false)
+
+// Parse latitude_longitude string to get lat/lng
+function parseLatLng(latLngString: string): { lat: number; lng: number } | null {
+  if (!latLngString) return null
+  const parts = latLngString.split(',').map((p: string) => parseFloat(p.trim()))
+  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+    return { lat: parts[0], lng: parts[1] }
   }
-])
+  return null
+}
+
+// Transform API center data to structured states/districts
+function transformCentersToStatesStructure(centers: any[]): any[] {
+  const statesMap = new Map<string, any>()
+
+  centers.forEach((center: any) => {
+    const state = center.state || 'Unknown'
+    const district = center.district || 'Unknown'
+
+    if (!statesMap.has(state)) {
+      statesMap.set(state, {
+        id: statesMap.size + 1,
+        name: state,
+        districts: new Map<string, any>()
+      })
+    }
+
+    const stateObj = statesMap.get(state)
+    if (!stateObj.districts.has(district)) {
+      stateObj.districts.set(district, {
+        id: stateObj.districts.size + 1,
+        name: district,
+        centers: []
+      })
+    }
+
+    const latLng = parseLatLng(center.latitude_longitude)
+    const centerObj = {
+      id: center.id,
+      center_code: center.center_code,
+      name: center.locality || center.center_code,
+      address: center.address,
+      district: district,
+      state: state,
+      phone: center.contact_no,
+      latitude: latLng?.lat || 0,
+      longitude: latLng?.lng || 0
+    }
+
+    stateObj.districts.get(district).centers.push(centerObj)
+  })
+
+  // Convert Map to Array and add district count to state
+  return Array.from(statesMap.values()).map((state: any) => ({
+    ...state,
+    districtCount: state.districts.size,
+    districts: Array.from(state.districts.values())
+  }))
+}
+
+// Load center addresses from API
+async function loadCenterAddresses() {
+  isLoadingCenters.value = true
+  try {
+    const url = getApiUrl('centerAddresses')
+    console.log('Loading center addresses from:', url)
+
+    const response = await fetch(url)
+    const result = await response.json()
+
+    console.log('Center addresses API response:', result)
+
+    if (result.success && result.data) {
+      // Log first few centers to verify center_code is present
+      if (result.data.length > 0) {
+        console.log('First center object:', result.data[0])
+        if (!result.data[0].center_code) {
+          console.warn('⚠️ Warning: First center missing center_code field!')
+        }
+      }
+
+      const structuredStates = transformCentersToStatesStructure(result.data)
+      mockStates.value = structuredStates
+      console.log('Centers loaded and structured:', structuredStates)
+      console.log('Loaded', result.data.length, 'centers successfully')
+    } else {
+      console.warn('Failed to load center addresses:', result.message)
+    }
+  } catch (error) {
+    console.error('Error loading center addresses:', error)
+  } finally {
+    isLoadingCenters.value = false
+  }
+}
 
 // All centers from all states
 const allCenters = computed<Centre[]>(() => {
@@ -513,9 +556,17 @@ function resetBrowse() {
   selectedDistrict.value = null
 }
 
-// Handle Join Now button click
+// Handle Join Now button click - Opens registration modal
 function handleJoinNow(centre: Centre) {
-  emit('joinNow', centre)
+  selectedCentreForModal.value = centre
+  showJoinModal.value = true
+}
+
+// Handle successful registration
+function handleJoinSuccess() {
+  console.log('User successfully registered for:', selectedCentreForModal.value?.name)
+  // Modal stays open for user to interact with success message and WhatsApp join button
+  // User can close it manually by clicking the Close button
 }
 
 // Watch for changes to reinitialize map
@@ -527,6 +578,9 @@ watch([viewMode, filteredCenters], async () => {
 })
 
 onMounted(() => {
+  // Load center addresses from API
+  loadCenterAddresses()
+
   // Load Google Maps script if not already loaded
   if (!window.google) {
     const script = document.createElement('script')

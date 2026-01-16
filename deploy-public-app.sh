@@ -99,8 +99,9 @@ if [ ! -d "node_modules" ]; then
     npm install
 fi
 
-# Build for production
-npm run build
+# Build for production with explicit NODE_ENV to use .env.production
+echo "Using NODE_ENV=production to load .env.production..."
+NODE_ENV=production npm run build
 
 if [ ! -d "dist" ]; then
     echo -e "${RED}Error: Web app build failed - dist directory not found${NC}"

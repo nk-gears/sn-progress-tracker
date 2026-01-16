@@ -75,8 +75,8 @@ const quickLinks = [
 ]
 
 const contactInfo = {
-  phone: '8XXXXXX',
-  whatsapp: '9XXXXXXXX'
+  phone: '9566004465',
+  whatsapp: '9566004465'
 }
 
 const currentYear = computed(() => new Date().getFullYear())

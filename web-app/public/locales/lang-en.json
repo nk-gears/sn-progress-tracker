@@ -89,6 +89,20 @@
       "answer": "Shivanum Naanum will be held from 14-16 February 2026. The centres will be open in two sessions: Morning session from 7:00 AM to 12:00 Noon, and Evening session from 4:00 PM to 8:00 PM. You can visit any centre during these hours."
     }
   },
+  "joinEvent": {
+    "title": "Join the Event",
+    "nameLabel": "Name",
+    "namePlaceholder": "Enter your name",
+    "mobileLabel": "WhatsApp Number",
+    "mobilePlaceholder": "10-digit number",
+    "mobileHelp": "10-digit WhatsApp number only",
+    "joinButton": "Join the Event",
+    "joining": "Joining...",
+    "success": "Thank You!",
+    "successMessage": "You have been registered for the event. We look forward to seeing you!",
+    "joinGroup": "Join Our WhatsApp Group",
+    "close": "Close"
+  },
   "footer": {
     "tagline": "Experience God Shiva through silence and meditation",
     "organisedBy": "Organized by Brahma Kumaris",

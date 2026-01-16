@@ -1,6 +1,6 @@
--- Schema for the center_addresses table, designed to be flexible for CSV import.
+-- Schema for the medt_center_addresses table, designed to be flexible for CSV import.
 
-CREATE TABLE IF NOT EXISTS center_addresses (
+CREATE TABLE IF NOT EXISTS medt_center_addresses (
     id INT AUTO_INCREMENT PRIMARY KEY,
     center_code VARCHAR(255),
     state VARCHAR(255),

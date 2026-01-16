@@ -1,6 +1,7 @@
 // Centre and Location Types
 export interface Centre {
   id: number
+  center_code?: string
   name: string
   address: string
   district: string
