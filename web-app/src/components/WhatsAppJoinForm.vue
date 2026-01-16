@@ -7,7 +7,27 @@
       </p>
 
       <div class="max-w-md mx-auto content-card">
-        <form @submit.prevent="handleSubmit" class="space-y-4">
+        <!-- Thank You Message -->
+        <Transition name="fade">
+          <div v-if="showSuccess" class="text-center py-8">
+            <div class="mb-6">
+              <svg class="w-20 h-20 mx-auto text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-800 mb-3">Thank You!</h3>
+            <p class="text-gray-600 mb-6">{{ $t('whatsapp.successMessage') }}</p>
+            <button
+              @click="resetForm"
+              class="btn btn-secondary"
+            >
+              Register Another Person
+            </button>
+          </div>
+        </Transition>
+
+        <!-- Registration Form -->
+        <form v-show="!showSuccess" @submit.prevent="handleSubmit" class="space-y-4">
           <div>
             <input
               v-model="form.name"
@@ -24,12 +44,13 @@
               v-model="form.mobile"
               type="tel"
               class="form-input"
-              :placeholder="$t('whatsapp.mobilePlaceholder')"
+              placeholder="WhatsApp Number (10 digits)"
               pattern="[0-9]{10}"
               maxlength="10"
               required
               :disabled="isSubmitting"
             />
+            <p class="text-xs text-gray-500 mt-1">Enter your 10-digit WhatsApp number</p>
           </div>
 
           <div>
@@ -56,31 +77,43 @@
               {{ $t('whatsapp.submitting') }}
             </span>
           </button>
+
+          <!-- Error Message -->
+          <Transition name="fade">
+            <div v-if="error" class="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p class="text-red-700 text-center">{{ error }}</p>
+            </div>
+          </Transition>
         </form>
-
-        <!-- Success Message -->
-        <Transition name="fade">
-          <div v-if="showSuccess" class="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <p class="text-green-700 text-center font-medium">
-              ✓ {{ $t('whatsapp.successMessage') }}
-            </p>
-          </div>
-        </Transition>
-
-        <!-- Error Message -->
-        <Transition name="fade">
-          <div v-if="error" class="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p class="text-red-700 text-center">{{ error }}</p>
-          </div>
-        </Transition>
       </div>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import type { WhatsAppJoinForm, Centre } from '@/types'
+
+// Declare window.APP_CONFIG type
+declare global {
+  interface Window {
+    APP_CONFIG?: {
+      API_BASE_URL: string
+    }
+  }
+}
+
+// Props
+interface Props {
+  selectedCentreId?: number
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  selectedCentreId: 0
+})
+
+// API Configuration - Use from window.APP_CONFIG or fallback to default
+const API_BASE_URL = window.APP_CONFIG?.API_BASE_URL || 'http://192.168.1.13/sn-progress-app/backend/api.php'
 
 const form = reactive<WhatsAppJoinForm>({
   name: '',
@@ -91,58 +124,106 @@ const form = reactive<WhatsAppJoinForm>({
 const isSubmitting = ref(false)
 const showSuccess = ref(false)
 const error = ref('')
+const centres = ref<Centre[]>([])
+const isLoadingCentres = ref(false)
 
-// Sample centres - in real app, fetch from API
-const centres = ref<Centre[]>([
-  { id: 1, name: 'West Mambalam, Chennai', address: '203, Murugan illam, Chennai 73', district: 'Chennai', state: 'Tamil Nadu', latitude: 13.0418, longitude: 80.2341, phone: '+91-XXXXXXXXXX' },
-  { id: 2, name: 'Ashok Nagar, Chennai', address: '13, Vadivel street, Chennai - 83', district: 'Chennai', state: 'Tamil Nadu', latitude: 13.0358, longitude: 80.2102, phone: '+91-XXXXXXXXXX' },
-  { id: 3, name: 'Anna Nagar, Chennai', address: '13, Vadivel street, Chennai - 83', district: 'Chennai', state: 'Tamil Nadu', latitude: 13.0850, longitude: 80.2101, phone: '+91-XXXXXXXXXX' }
-])
+// Fetch centres from API
+const fetchCentres = async () => {
+  isLoadingCentres.value = true
+  try {
+    const response = await fetch(`${API_BASE_URL}/branches`)
+    const data = await response.json()
+
+    if (data.success && data.branches) {
+      centres.value = data.branches
+    } else {
+      error.value = 'Failed to load centres. Please refresh the page.'
+    }
+  } catch (err) {
+    console.error('Error fetching centres:', err)
+    error.value = 'Failed to load centres. Please refresh the page.'
+  } finally {
+    isLoadingCentres.value = false
+  }
+}
 
 const handleSubmit = async () => {
   error.value = ''
-  showSuccess.value = false
   isSubmitting.value = true
 
   try {
-    // Validate mobile number
+    // Validate mobile number (WhatsApp)
     if (!/^[0-9]{10}$/.test(form.mobile)) {
-      error.value = 'Please enter a valid 10-digit mobile number'
+      error.value = 'Please enter a valid 10-digit WhatsApp number (numbers only)'
       isSubmitting.value = false
       return
     }
 
-    // TODO: Replace with actual API call
-    // await fetch('/api/whatsapp/join', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(form)
-    // })
+    // Validate mobile number starts with 6-9 (Indian mobile numbers)
+    if (!/^[6-9]/.test(form.mobile)) {
+      error.value = 'WhatsApp number must start with 6, 7, 8, or 9'
+      isSubmitting.value = false
+      return
+    }
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    // Validate name contains only letters and spaces
+    if (!/^[A-Za-z\s]+$/.test(form.name.trim())) {
+      error.value = 'Name can only contain letters and spaces'
+      isSubmitting.value = false
+      return
+    }
 
-    console.log('Form submitted:', form)
+    // Call API
+    const response = await fetch(`${API_BASE_URL}/event-register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form)
+    })
 
-    // Show success message
-    showSuccess.value = true
+    const data = await response.json()
 
-    // Reset form
-    form.name = ''
-    form.mobile = ''
-    form.centre_id = 0
+    if (data.success) {
+      // Show success message
+      showSuccess.value = true
 
-    // Hide success message after 5 seconds
-    setTimeout(() => {
-      showSuccess.value = false
-    }, 5000)
+      // Reset form
+      form.name = ''
+      form.mobile = ''
+      form.centre_id = 0
+    } else {
+      error.value = data.message || 'Registration failed. Please try again.'
+    }
 
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'An error occurred. Please try again.'
+    console.error('Registration error:', err)
+    error.value = 'An error occurred. Please check your connection and try again.'
   } finally {
     isSubmitting.value = false
   }
 }
+
+const resetForm = () => {
+  showSuccess.value = false
+  error.value = ''
+  form.name = ''
+  form.mobile = ''
+  form.centre_id = 0
+}
+
+// Watch for selectedCentreId changes to pre-fill the form
+watch(() => props.selectedCentreId, (newId) => {
+  if (newId && newId > 0) {
+    form.centre_id = newId
+    // Reset success state to show form again
+    showSuccess.value = false
+    error.value = ''
+  }
+})
+
+// Fetch centres when component mounts
+onMounted(() => {
+  fetchCentres()
+})
 </script>
 
 <style scoped>

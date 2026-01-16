@@ -1,0 +1,102 @@
+{
+  "nav": {
+    "home": "Home",
+    "findCentre": "Find Centre",
+    "about": "About",
+    "organiser": "Organiser",
+    "joinUs": "Join Us",
+    "contact": "Contact Us",
+    "faq": "FAQ"
+  },
+  "hero": {
+    "title": "Shivanum Naanum",
+    "subtitle": "Few Moments with God Shiva . . .",
+    "description": "This Shivratri, experience God Shiva through silence and meditation",
+    "eventDates": "14–16 February 2026",
+    "eventTimings": "7:00 AM – 12:00 Noon & 4:00 PM – 8:00 PM",
+    "joinWhatsApp": "Join our WhatsApp group to get frequent updates",
+    "findCentre": "🔍 Find Your Nearest Centre"
+  },
+  "findCentre": {
+    "title": "🔍 Find Your Nearest Centre",
+    "subtitle": "Select your location or allow GPS to find the nearest centres automatically.",
+    "selectState": "Select State",
+    "selectDistrict": "Select District",
+    "selectCentre": "Select Centre",
+    "useLocation": "📍 Use My Location to Find Nearest Centres",
+    "states": {
+      "tamilNadu": "Tamil Nadu",
+      "southKerala": "South Kerala",
+      "puducherry": "Puducherry"
+    }
+  },
+  "centreCard": {
+    "distance": "km away",
+    "getDirections": "Get Directions",
+    "call": "Call"
+  },
+  "about": {
+    "title": "🌺 What is Shivanum Naanum?",
+    "para1": "Shivanum Naanum is a Shivratri experience organised by the Brahma Kumaris, offering a silent, meditation-based environment for inner reflection. Visitors are invited to walk in and spend time in a specially created Experience Room prepared through collective Rajayoga meditation.",
+    "para2": "The Experience Room is designed with simplicity, gentle lighting, and minimal sound to support silence and stillness. Visitors enter quietly, take their seats, and remain in silence for a short duration. Soft guidance may be provided to help the mind settle naturally.",
+    "para3": "There are no rituals to perform and no specific procedures to follow. The experience is self-paced and suitable for first-time visitors as well as regular meditators. Many visitors report a sense of calmness, clarity, and lightness during and after the experience.",
+    "para4": "Entry to Shivanum Naanum is free and open to all. Visitors may walk in during event hours without prior registration.",
+    "findCentreBtn": "Find your nearest centre",
+    "knowMoreBtn": "Know more about Shivanum Naanum"
+  },
+  "organiser": {
+    "title": "🌺 Brahma Kumaris",
+    "para1": "The Brahma Kumaris is a worldwide spiritual organisation with centres in many countries. It focuses on inner development through Rajayoga meditation and spiritual education. The organisation is known for its structured teaching, disciplined lifestyle, and emphasis on personal values.",
+    "para2": "All activities are conducted by trained volunteers who offer their time and service freely. The teachings are practical and meant to be applied in daily life. People from all walks of life are welcome to participate."
+  },
+  "whatsapp": {
+    "title": "📱 Join Our WhatsApp Group",
+    "subtitle": "Stay updated with event schedules, centre locations, and meditation tips",
+    "namePlaceholder": "Your Name",
+    "mobilePlaceholder": "Mobile Number (10 digits)",
+    "selectCentre": "Select Nearest Centre",
+    "submitButton": "Join WhatsApp Group",
+    "submitting": "Joining...",
+    "successMessage": "Thank you! You will receive a WhatsApp invite shortly.",
+    "errorMessage": "Please fill all fields correctly"
+  },
+  "contact": {
+    "title": "🌺 Contact Us",
+    "subtitle": "For any queries, you may visit the nearest Shivanum Naanum centre or contact us:",
+    "call": "Call",
+    "whatsapp": "WhatsApp"
+  },
+  "faq": {
+    "title": "❓ Frequently Asked Questions",
+    "q1": {
+      "question": "What is the Shivanum Naanum program?",
+      "answer": "Shivanum Naanum is a special Shivratri meditation experience organized by Brahma Kumaris. It offers a peaceful environment for inner reflection through silence and Rajayoga meditation. The program is designed to help visitors connect with their spiritual essence during the auspicious occasion of Shivratri."
+    },
+    "q2": {
+      "question": "Do I need prior meditation experience?",
+      "answer": "No prior experience is required. The program is designed for everyone - from first-time visitors to experienced meditators. Gentle guidance is provided to help you settle into the experience naturally. The atmosphere is created to support your journey regardless of your background."
+    },
+    "q3": {
+      "question": "What can I expect during the experience?",
+      "answer": "You will enter a specially prepared Experience Room with gentle lighting and minimal sound. After taking your seat, you'll spend time in silence and stillness. Soft guidance may be provided. There are no rituals or specific procedures to follow - the experience is self-paced and personal."
+    },
+    "q4": {
+      "question": "Is there any entry fee or registration required?",
+      "answer": "Entry is completely free and open to all. No prior registration is required - you can simply walk in during the event hours. The Brahma Kumaris organization operates on volunteer service, and all activities are offered freely to support spiritual growth."
+    },
+    "q5": {
+      "question": "What are the event dates and timings?",
+      "answer": "Shivanum Naanum will be held from 14-16 February 2026. The centres will be open in two sessions: Morning session from 7:00 AM to 12:00 Noon, and Evening session from 4:00 PM to 8:00 PM. You can visit any centre during these hours."
+    }
+  },
+  "footer": {
+    "tagline": "Experience God Shiva through silence and meditation",
+    "organisedBy": "Organized by Brahma Kumaris",
+    "quickLinks": "Quick Links",
+    "contact": "Contact",
+    "call": "Call",
+    "whatsapp": "WhatsApp",
+    "copyright": "Brahma Kumaris. All rights reserved.",
+    "eventName": "Shivanum Naanum - A Shivratri Meditation Experience"
+  }
+}

@@ -1,19 +1,11 @@
-POST https://happy-village.org/sn-progress/api.php/auth
+  mysql -u mediuser -p meditation_tracker < database/event_register_table.sql
+
+
+POST http://localhost:8080/api.php?action=bulk-centers
 Content-Type: application/json
 
-{"mobile":"9283181228","password":"meditation123"}
-
-
-
-
-### MK2 
-
-POST http://localhost:8080/backend/api.php/api/center-addresses
-Content-Type: application/json
-
-[{
+{
     "state": "Tamil Nadu",
-    "center_code":"C32",
     "district": "Tirunelveli",
     "locality": "Manipuram road (Near town arch), Tirunelveli",
     "address": "Manipuram road, Tirunelveli town, Near Town Arch",
@@ -23,4 +15,4 @@ Content-Type: application/json
     "lat_long_verified": "",
     "url": "",
     "verified": ""
-}]
+}

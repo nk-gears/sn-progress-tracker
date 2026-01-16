@@ -5,7 +5,7 @@
         <!-- Brand Section -->
         <div>
           <div class="flex items-center space-x-2 mb-4">
-            <span class="text-3xl">🕉️</span>
+            <span class="text-3xl"><img data-v-4d808a77="" src="/images/sn-logo.png" alt="Shivanum Naanum Logo" class="h-12 w-auto"></span>
             <h3 class="text-xl font-bold">{{ $t('hero.title') }}</h3>
           </div>
           <p class="text-gray-400">{{ $t('footer.tagline') }}</p>

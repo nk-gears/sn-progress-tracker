@@ -7,7 +7,7 @@
     <HeroSection />
 
     <!-- Find Centre Section -->
-    <CentreFinder />
+    <CentreFinder @join-now="handleJoinNow" />
 
     <!-- What is Shivanum Naanum Section -->
     <section id="about" class="section">
@@ -43,7 +43,7 @@
     </section>
 
     <!-- Join WhatsApp Group Section -->
-    <WhatsAppJoinForm />
+    <WhatsAppJoinForm ref="whatsappForm" :selected-centre-id="selectedCentreId" />
 
     <!-- Contact Section -->
     <section id="contact" class="section bg-gray-50">
@@ -78,12 +78,30 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import Navbar from '@/components/Navbar.vue'
 import HeroSection from '@/components/HeroSection.vue'
 import CentreFinder from '@/components/CentreFinder.vue'
 import WhatsAppJoinForm from '@/components/WhatsAppJoinForm.vue'
 import FAQSection from '@/components/FAQSection.vue'
 import Footer from '@/components/Footer.vue'
+import type { Centre } from '@/types'
+
+const whatsappForm = ref<InstanceType<typeof WhatsAppJoinForm> | null>(null)
+const selectedCentreId = ref<number>(0)
+
+const handleJoinNow = (centre: Centre) => {
+  // Set the selected centre ID
+  selectedCentreId.value = centre.id
+
+  // Scroll to the form
+  setTimeout(() => {
+    const formElement = document.getElementById('join-us')
+    if (formElement) {
+      formElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, 100)
+}
 </script>
 
 <style scoped>

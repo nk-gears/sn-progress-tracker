@@ -87,12 +87,20 @@ switch ($endpoint) {
     case 'individual-hours':
         handleIndividualHours();
         break;
-        
+
+    case 'event-register':
+        handleEventRegister();
+        break;
+
+    case 'center-addresses':
+        handleCenterAddresses();
+        break;
+
     default:
         sendResponse([
             'success' => false,
             'error' => 'Invalid endpoint',
-            'message' => "Endpoint '$endpoint' not found. Available endpoints: auth, participants, sessions, dashboard, profile, onboard, bulk-users, admin-report, branches",
+            'message' => "Endpoint '$endpoint' not found. Available endpoints: auth, participants, sessions, dashboard, profile, onboard, bulk-users, admin-report, branches, event-register, center-addresses",
             'available_endpoints' => [
                 'POST /api/auth - User authentication',
                 'GET /api/participants - Get participants',
@@ -108,7 +116,9 @@ switch ($endpoint) {
                 'POST /api/onboard - Onboard new user with branch mapping',
                 'POST /api/bulk-users - Bulk create users with branch mapping',
                 'POST /api/admin-report - Generate admin reports',
-                'GET /api/branches - Get all branches (public)'
+                'GET /api/branches - Get all branches (public)',
+                'POST /api/event-register - Register for event (public)',
+                'POST /api/center-addresses - Sync/import center addresses (upsert by center_code)'
             ]
         ], 404);
 }
@@ -1757,6 +1767,199 @@ function getAllBranches() {
     } catch (Exception $e) {
         error_log('Get all branches error: ' . $e->getMessage());
         return [];
+    }
+}
+
+// Event Registration handler (public endpoint)
+function handleEventRegister() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        sendResponse(['success' => false, 'message' => 'Only POST method allowed'], 405);
+        return;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $missing = validateRequired($input, ['name', 'mobile', 'centre_id']);
+
+    if (!empty($missing)) {
+        sendResponse(['success' => false, 'message' => 'Missing required fields: ' . implode(', ', $missing)], 400);
+        return;
+    }
+
+    $name = trim($input['name']);
+    $mobile = trim($input['mobile']);
+    $centre_id = (int)$input['centre_id'];
+
+    // Validate name (only letters and spaces)
+    if (!preg_match('/^[A-Za-z\s]+$/', $name)) {
+        sendResponse(['success' => false, 'message' => 'Name can only contain letters and spaces'], 400);
+        return;
+    }
+
+    // Validate mobile number format (10 digits)
+    if (!preg_match('/^\d{10}$/', $mobile)) {
+        sendResponse(['success' => false, 'message' => 'Mobile number must be exactly 10 digits'], 400);
+        return;
+    }
+
+    // Validate centre exists
+    try {
+        $centre = fetchRow(
+            "SELECT id, name FROM medt_branches WHERE id = ?",
+            [$centre_id],
+            'i'
+        );
+
+        if (!$centre) {
+            sendResponse(['success' => false, 'message' => 'Invalid centre selected'], 400);
+            return;
+        }
+
+        // Insert registration
+        $result = executeInsert(
+            "INSERT INTO medt_event_register (name, mobile, centre_id) VALUES (?, ?, ?)",
+            [$name, $mobile, $centre_id],
+            'isi'
+        );
+
+        if ($result && $result['insert_id']) {
+            sendResponse([
+                'success' => true,
+                'message' => 'Registration successful! Thank you for registering.',
+                'data' => [
+                    'id' => $result['insert_id'],
+                    'name' => $name,
+                    'centre' => $centre['name']
+                ]
+            ], 201);
+        } else {
+            sendResponse(['success' => false, 'message' => 'Failed to register. Please try again.'], 500);
+        }
+
+    } catch (Exception $e) {
+        error_log('Event registration error: ' . $e->getMessage());
+        sendResponse(['success' => false, 'message' => 'Failed to register. Please try again.'], 500);
+    }
+}
+
+// Center Addresses handler - Sync/Import with upsert logic
+function handleCenterAddresses() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        sendResponse(['success' => false, 'message' => 'Only POST method allowed'], 405);
+        return;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    // Validate that input is an array of center address objects
+    if (!is_array($input) || empty($input)) {
+        sendResponse(['success' => false, 'message' => 'Input must be a non-empty array of center address objects'], 400);
+        return;
+    }
+
+    $results = [
+        'success' => true,
+        'processed' => 0,
+        'inserted' => 0,
+        'updated' => 0,
+        'errors' => []
+    ];
+
+    try {
+        // Process each center address in the array
+        foreach ($input as $index => $centerData) {
+            try {
+                // Validate center_code is present
+                if (!isset($centerData['center_code']) || empty(trim($centerData['center_code']))) {
+                    $results['errors'][] = "Record #$index: center_code is required";
+                    continue;
+                }
+
+                $center_code = trim($centerData['center_code']);
+
+                // Check if center_code already exists
+                $existingCenter = fetchRow(
+                    "SELECT id FROM center_addresses WHERE center_code = ?",
+                    [$center_code],
+                    's'
+                );
+
+                if ($existingCenter) {
+                    // Update existing record
+                    $updateFields = [];
+                    $updateValues = [];
+                    $types = '';
+
+                    // Define all updateable fields
+                    $updateableFields = [
+                        'state', 'district', 'locality', 'address', 'contact_no',
+                        'address_contact_verified', 'latitude_longitude', 'lat_long_verified', 'url', 'verified'
+                    ];
+
+                    foreach ($updateableFields as $field) {
+                        if (isset($centerData[$field]) && $centerData[$field] !== null && $centerData[$field] !== '') {
+                            $updateFields[] = "$field = ?";
+                            $updateValues[] = trim((string)$centerData[$field]);
+                            $types .= 's';
+                        }
+                    }
+
+                    if (!empty($updateFields)) {
+                        $updateValues[] = $center_code;
+                        $types .= 's';
+
+                        $sql = "UPDATE center_addresses SET " . implode(', ', $updateFields) . " WHERE center_code = ?";
+                        executeQuery($sql, $updateValues, $types);
+                        $results['updated']++;
+                    }
+                } else {
+                    // Insert new record
+                    $fields = ['center_code'];
+                    $values = [$center_code];
+                    $types = 's';
+
+                    $insertableFields = [
+                        'state', 'district', 'locality', 'address', 'contact_no',
+                        'address_contact_verified', 'latitude_longitude', 'lat_long_verified', 'url', 'verified'
+                    ];
+
+                    foreach ($insertableFields as $field) {
+                        if (isset($centerData[$field]) && $centerData[$field] !== null && $centerData[$field] !== '') {
+                            $fields[] = $field;
+                            $values[] = trim((string)$centerData[$field]);
+                            $types .= 's';
+                        }
+                    }
+
+                    $placeholders = str_repeat('?, ', count($fields) - 1) . '?';
+                    $sql = "INSERT INTO center_addresses (" . implode(', ', $fields) . ") VALUES (" . $placeholders . ")";
+
+                    executeInsert($sql, $values, $types);
+                    $results['inserted']++;
+                }
+
+                $results['processed']++;
+
+            } catch (Exception $e) {
+                $results['errors'][] = "Record #$index: " . $e->getMessage();
+                error_log("Center address processing error for record #$index: " . $e->getMessage());
+            }
+        }
+
+        // Determine overall success
+        $results['success'] = $results['processed'] > 0;
+        $results['message'] = sprintf(
+            'Processed %d/%d records. Inserted: %d, Updated: %d',
+            $results['processed'],
+            count($input),
+            $results['inserted'],
+            $results['updated']
+        );
+
+        sendResponse($results);
+
+    } catch (Exception $e) {
+        error_log('Center addresses error: ' . $e->getMessage());
+        sendResponse(['success' => false, 'message' => 'Failed to sync center addresses'], 500);
     }
 }
 ?>

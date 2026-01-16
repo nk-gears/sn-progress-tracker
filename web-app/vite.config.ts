@@ -5,6 +5,7 @@ import { fileURLToPath, URL } from 'node:url'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [vue()],
+  base: '/sn-join/', // Base URL for deployment in subdirectory
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

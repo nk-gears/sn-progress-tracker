@@ -6,10 +6,10 @@
 
       <div class="max-w-6xl mx-auto">
         <!-- Tab Navigation -->
-        <div class="flex border-b border-gray-200 mb-6">
+        <div class="flex border-b border-gray-200 mb-6 overflow-x-auto">
           <button
             @click="activeTab = 'nearMe'"
-            :class="['flex items-center gap-2 px-6 py-3 font-medium border-b-2 transition-colors',
+            :class="['flex items-center gap-2 px-6 py-3 font-medium border-b-2 transition-colors whitespace-nowrap',
               activeTab === 'nearMe'
                 ? 'border-purple-600 text-purple-600'
                 : 'border-transparent text-gray-600 hover:text-purple-600']"
@@ -21,8 +21,20 @@
             Near Me
           </button>
           <button
+            @click="activeTab = 'search'"
+            :class="['flex items-center gap-2 px-6 py-3 font-medium border-b-2 transition-colors whitespace-nowrap',
+              activeTab === 'search'
+                ? 'border-purple-600 text-purple-600'
+                : 'border-transparent text-gray-600 hover:text-purple-600']"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            Search Center
+          </button>
+          <button
             @click="activeTab = 'browse'"
-            :class="['flex items-center gap-2 px-6 py-3 font-medium border-b-2 transition-colors',
+            :class="['flex items-center gap-2 px-6 py-3 font-medium border-b-2 transition-colors whitespace-nowrap',
               activeTab === 'browse'
                 ? 'border-purple-600 text-purple-600'
                 : 'border-transparent text-gray-600 hover:text-purple-600']"
@@ -30,7 +42,7 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
             </svg>
-            Browse by Location
+            By State/District
           </button>
         </div>
 
@@ -110,13 +122,14 @@
                 v-for="centre in filteredCenters"
                 :key="centre.id"
                 :centre="centre"
+                @join-now="handleJoinNow"
               />
             </div>
           </div>
         </div>
 
-        <!-- Browse Tab -->
-        <div v-show="activeTab === 'browse'" class="content-card">
+        <!-- Search Center Tab -->
+        <div v-show="activeTab === 'search'" class="content-card">
           <!-- Search Box -->
           <div class="mb-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">Search Centers</label>
@@ -128,8 +141,8 @@
             />
           </div>
 
-          <div v-if="searchQuery.trim()" class="mb-6">
-            <!-- Search Results -->
+          <!-- Search Results -->
+          <div v-if="searchQuery.trim()">
             <h3 class="text-lg font-semibold text-gray-700 mb-4">
               Search Results ({{ searchResults.length }})
             </h3>
@@ -138,6 +151,7 @@
                 v-for="centre in searchResults"
                 :key="centre.id"
                 :centre="centre"
+                @join-now="handleJoinNow"
               />
             </div>
             <div v-else class="text-center py-8 text-gray-500">
@@ -145,8 +159,19 @@
             </div>
           </div>
 
-          <div v-else>
-          <!-- Browse by State/District (hidden when searching) -->
+          <!-- Empty State -->
+          <div v-else class="text-center py-12 text-gray-500">
+            <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <p class="text-lg">Start typing to search for centers</p>
+            <p class="text-sm mt-2">Search by center name, location, district, or state</p>
+          </div>
+        </div>
+
+        <!-- Browse Tab -->
+        <div v-show="activeTab === 'browse'" class="content-card">
+          <!-- Browse by State/District -->
           <!-- Breadcrumb -->
           <nav class="flex mb-6 text-sm" aria-label="Breadcrumb">
             <ol class="inline-flex items-center space-x-1">
@@ -208,8 +233,8 @@
               v-for="centre in selectedDistrict.centers"
               :key="centre.id"
               :centre="centre"
+              @join-now="handleJoinNow"
             />
-          </div>
           </div>
         </div>
       </div>
@@ -222,7 +247,12 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import CentreCard from './CentreCard.vue'
 import type { Centre } from '@/types'
 
-const activeTab = ref<'nearMe' | 'browse'>('nearMe')
+// Emit event to parent
+const emit = defineEmits<{
+  joinNow: [centre: Centre]
+}>()
+
+const activeTab = ref<'nearMe' | 'search' | 'browse'>('nearMe')
 const viewMode = ref<'list' | 'map'>('list')
 const isLoadingLocation = ref(false)
 const errorMessage = ref('')
@@ -481,6 +511,11 @@ function showDistricts() {
 function resetBrowse() {
   selectedState.value = null
   selectedDistrict.value = null
+}
+
+// Handle Join Now button click
+function handleJoinNow(centre: Centre) {
+  emit('joinNow', centre)
 }
 
 // Watch for changes to reinitialize map

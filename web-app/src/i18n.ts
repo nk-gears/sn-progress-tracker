@@ -1,19 +1,18 @@
 import { createI18n } from 'vue-i18n'
 
 // Supported languages
-export const SUPPORTED_LOCALES = ['ta', 'en', 'ml', 'hi'] as const
+export const SUPPORTED_LOCALES = ['ta', 'en', 'ml'] as const
 export type Locale = typeof SUPPORTED_LOCALES[number]
 
 export const LOCALE_NAMES: Record<Locale, string> = {
   ta: 'தமிழ்',
   en: 'English',
-  ml: 'മലയാளം',
-  hi: 'हिन्दी'
+  ml: 'മലയാளം'
 }
 
 // Load locale messages from JSON files
 async function loadLocaleMessages(locale: Locale) {
-  const messages = await fetch(`/locales/lang-${locale}.json`)
+  const messages = await fetch(`./locales/lang-${locale}.json`)
   return await messages.json()
 }
 
