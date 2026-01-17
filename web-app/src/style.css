@@ -8,11 +8,23 @@
   }
 
   body {
-    @apply bg-gray-50 text-gray-900 font-sans;
+    @apply bg-gray-50 text-gray-900;
+    font-family: 'Poppins', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    font-weight: 400;
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold;
+    font-family: 'Raleway', sans-serif;
+    letter-spacing: 0.3px;
+  }
+
+  h1 {
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.2px;
   }
 }
 
@@ -42,20 +54,36 @@
   }
 
   .section-title {
-    @apply text-3xl md:text-4xl font-bold mb-4 text-center;
+    @apply text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-center;
+    font-family: 'Raleway', sans-serif;
+    letter-spacing: 0.5px;
   }
 
   .section-subtitle {
     @apply text-lg md:text-xl text-gray-600 text-center mb-8;
+    font-family: 'Poppins', sans-serif;
   }
 
   .content-card {
-    @apply bg-white rounded-2xl p-8 shadow-lg;
+    @apply bg-white rounded-2xl px-8 py-4 shadow-lg;
   }
 
   .form-input, .form-select {
     @apply w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-600 focus:ring-2 focus:ring-purple-200 outline-none transition-all;
   }
+}
+
+/* Paragraph styling */
+p, .prose {
+  font-family: 'Poppins', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* Nav link styling */
+.nav-link {
+  font-family: 'Raleway', sans-serif;
+  letter-spacing: 0.3px;
 }
 
 /* Custom animations */

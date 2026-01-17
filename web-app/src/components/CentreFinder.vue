@@ -1,8 +1,9 @@
 <template>
   <section id="find-centre" class="section bg-gray-50 pt-0 -mt-2">
     <div class="container mx-auto px-0">
-      <h2 class="section-title">{{ $t('findCentre.title') }}</h2>
-      <p class="section-subtitle">{{ $t('findCentre.subtitle') }}</p>
+      <!-- Temporarily Hidden Section Title -->
+      <!-- <h2 class="section-title">{{ $t('findCentre.title') }}</h2>
+      <p class="section-subtitle">{{ $t('findCentre.subtitle') }}</p> -->
 
       <!-- Join Event Modal -->
       <JoinEventModal
@@ -14,10 +15,10 @@
 
       <div class="max-w-6xl mx-auto px-0">
         <!-- Tab Navigation -->
-        <div class="flex border-b border-gray-200 mb-6 overflow-x-auto">
+        <div class="flex border-b border-gray-200 mb-2">
           <button
             @click="activeTab = 'nearMe'"
-            :class="['flex items-center gap-2 px-6 py-3 font-medium border-b-2 transition-colors whitespace-nowrap',
+            :class="['flex-1 flex flex-col items-center justify-center gap-1 px-4 py-3 font-medium border-b-2 transition-colors',
               activeTab === 'nearMe'
                 ? 'border-purple-600 text-purple-600'
                 : 'border-transparent text-gray-600 hover:text-purple-600']"
@@ -26,23 +27,11 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
-            Near Me
-          </button>
-          <button
-            @click="activeTab = 'search'"
-            :class="['flex items-center gap-2 px-6 py-3 font-medium border-b-2 transition-colors whitespace-nowrap',
-              activeTab === 'search'
-                ? 'border-purple-600 text-purple-600'
-                : 'border-transparent text-gray-600 hover:text-purple-600']"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-            Search Center
+            <span class="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold">Near Me</span>
           </button>
           <button
             @click="activeTab = 'browse'"
-            :class="['flex items-center gap-2 px-6 py-3 font-medium border-b-2 transition-colors whitespace-nowrap',
+            :class="['flex-1 flex flex-col items-center justify-center gap-1 px-4 py-3 font-medium border-b-2 transition-colors',
               activeTab === 'browse'
                 ? 'border-purple-600 text-purple-600'
                 : 'border-transparent text-gray-600 hover:text-purple-600']"
@@ -50,15 +39,28 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
             </svg>
-            By State/District
+            <span class="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold">State/District</span>
+          </button>
+          <button
+            @click="activeTab = 'search'"
+            :class="['flex-1 flex flex-col items-center justify-center gap-1 px-4 py-3 font-medium border-b-2 transition-colors',
+              activeTab === 'search'
+                ? 'border-purple-600 text-purple-600'
+                : 'border-transparent text-gray-600 hover:text-purple-600']"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <span class="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold">Search</span>
           </button>
         </div>
 
         <!-- Near Me Tab -->
         <div v-show="activeTab === 'nearMe'" class="content-card">
           <div class="space-y-4">
-            <!-- Current Location Button -->
+            <!-- Current Location Button - Hidden after location is granted -->
             <button
+              v-show="!locationGranted"
               @click="getCurrentLocation"
               :disabled="isLoadingLocation"
               class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -107,7 +109,8 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                   </svg>
                 </button>
-                <button
+                <!-- Map View Button - Hidden -->
+                <!-- <button
                   @click="viewMode = 'map'"
                   :class="['p-2 rounded', viewMode === 'map' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300']"
                   title="Map View"
@@ -115,7 +118,7 @@
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                   </svg>
-                </button>
+                </button> -->
               </div>
             </div>
 
@@ -140,7 +143,7 @@
         <div v-show="activeTab === 'search'" class="content-card">
           <!-- Search Box -->
           <div class="mb-6">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Search Centers</label>
+            <label class="block text-base md:text-lg font-medium text-gray-700 mb-2">Search Centers</label>
             <input
               v-model="searchQuery"
               type="text"
@@ -151,7 +154,7 @@
 
           <!-- Search Results -->
           <div v-if="searchQuery.trim()">
-            <h3 class="text-lg font-semibold text-gray-700 mb-4">
+            <h3 class="text-xl md:text-2xl font-semibold text-gray-700 mb-4">
               Search Results ({{ searchResults.length }})
             </h3>
             <div v-if="searchResults.length > 0" class="space-y-4">
@@ -172,8 +175,8 @@
             <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
             </svg>
-            <p class="text-lg">Start typing to search for centers</p>
-            <p class="text-sm mt-2">Search by center name, location, district, or state</p>
+            <p class="text-xl md:text-2xl font-semibold">Start typing to search for centers</p>
+            <p class="text-base md:text-lg mt-2">Search by center name, location, district, or state</p>
           </div>
         </div>
 
@@ -181,7 +184,7 @@
         <div v-show="activeTab === 'browse'" class="content-card">
           <!-- Browse by State/District -->
           <!-- Breadcrumb -->
-          <nav class="flex mb-6 text-sm" aria-label="Breadcrumb">
+          <nav class="flex mb-6 text-base md:text-lg" aria-label="Breadcrumb">
             <ol class="inline-flex items-center space-x-1">
               <li>
                 <button @click="resetBrowse" class="text-purple-600 hover:text-purple-800 font-medium">
@@ -217,8 +220,8 @@
               @click="selectState(state)"
               class="p-4 text-left border border-gray-300 rounded-lg hover:border-purple-600 hover:bg-purple-50 transition-all"
             >
-              <h3 class="font-bold text-lg text-purple-700">{{ state.name }}</h3>
-              <p class="text-sm text-gray-600">{{ state.districtCount }} districts</p>
+              <h3 class="font-bold text-xl md:text-2xl text-purple-700">{{ state.name }}</h3>
+              <p class="text-base md:text-lg text-gray-600">{{ state.districtCount }} districts</p>
             </button>
           </div>
 
@@ -230,8 +233,8 @@
               @click="selectDistrict(district)"
               class="p-4 text-left border border-gray-300 rounded-lg hover:border-purple-600 hover:bg-purple-50 transition-all"
             >
-              <h3 class="font-bold text-lg text-purple-700">{{ district.name }}</h3>
-              <p class="text-sm text-gray-600">{{ district.centers.length }} centers</p>
+              <h3 class="font-bold text-xl md:text-2xl text-purple-700">{{ district.name }}</h3>
+              <p class="text-base md:text-lg text-gray-600">{{ district.centers.length }} centers</p>
             </button>
           </div>
 
@@ -275,6 +278,7 @@ const userLocation = ref<{ lat: number; lng: number } | null>(null)
 const selectedState = ref<any>(null)
 const selectedDistrict = ref<any>(null)
 const searchQuery = ref('')
+const locationGranted = ref(false)
 
 // Google Maps
 const mapContainer = ref<HTMLElement | null>(null)
@@ -461,6 +465,11 @@ async function getCurrentLocation() {
       lat: position.coords.latitude,
       lng: position.coords.longitude
     }
+
+    // Save location granted status to localStorage
+    locationGranted.value = true
+    localStorage.setItem('locationGranted', 'true')
+    localStorage.setItem('userLocation', JSON.stringify(userLocation.value))
   } catch (error) {
     errorMessage.value = 'Unable to get your location. Please check permissions.'
   } finally {
@@ -580,6 +589,21 @@ watch([viewMode, filteredCenters], async () => {
 onMounted(() => {
   // Load center addresses from API
   loadCenterAddresses()
+
+  // Check if location was previously granted
+  const savedLocationGranted = localStorage.getItem('locationGranted')
+  const savedUserLocation = localStorage.getItem('userLocation')
+
+  if (savedLocationGranted === 'true' && savedUserLocation) {
+    try {
+      const location = JSON.parse(savedUserLocation)
+      userLocation.value = location
+      locationGranted.value = true
+      console.log('Location restored from localStorage:', location)
+    } catch (error) {
+      console.error('Error parsing saved location:', error)
+    }
+  }
 
   // Load Google Maps script if not already loaded
   if (!window.google) {

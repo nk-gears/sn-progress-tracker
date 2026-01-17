@@ -14,7 +14,7 @@
       <div class="container mx-auto px-4">
         <h2 class="section-title">{{ $t('about.title') }}</h2>
         <div class="max-w-4xl mx-auto content-card">
-          <div class="prose prose-lg max-w-none space-y-4">
+          <div class="prose prose-lg max-w-none space-y-1">
             <p>{{ $t('about.para1') }}</p>
             <p>{{ $t('about.para2') }}</p>
             <p>{{ $t('about.para3') }}</p>
