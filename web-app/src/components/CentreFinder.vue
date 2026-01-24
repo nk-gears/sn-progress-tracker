@@ -239,7 +239,7 @@
           </div>
 
           <!-- Centers List -->
-          <div v-else class="space-y-4">
+          <div v-else ref="centresListContainer" class="space-y-4">
             <CentreCard
               v-for="centre in selectedDistrict.centers"
               :key="centre.id"
@@ -282,12 +282,35 @@ const locationGranted = ref(false)
 
 // Google Maps
 const mapContainer = ref<HTMLElement | null>(null)
+const centresListContainer = ref<HTMLElement | null>(null)
 let map: google.maps.Map | null = null
 let markers: google.maps.Marker[] = []
 
 // States and districts loaded from API
 const mockStates = ref<any[]>([])
 const isLoadingCenters = ref(false)
+
+// Location cache settings (5 minutes = 300000 milliseconds)
+const LOCATION_CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+const LOCATION_CACHE_KEY = 'userLocation'
+const LOCATION_TIMESTAMP_KEY = 'userLocationTimestamp'
+const LOCATION_GRANTED_KEY = 'locationGranted'
+
+// Helper function to check if location cache is expired
+function isLocationCacheExpired(): boolean {
+  const timestamp = localStorage.getItem(LOCATION_TIMESTAMP_KEY)
+  if (!timestamp) return true
+  const timeDiff = Date.now() - parseInt(timestamp)
+  return timeDiff > LOCATION_CACHE_DURATION
+}
+
+// Helper function to clear location from localStorage
+function clearLocationCache(): void {
+  localStorage.removeItem(LOCATION_CACHE_KEY)
+  localStorage.removeItem(LOCATION_TIMESTAMP_KEY)
+  localStorage.removeItem(LOCATION_GRANTED_KEY)
+  console.log('📍 Location cache cleared')
+}
 
 // Parse latitude_longitude string to get lat/lng
 function parseLatLng(latLngString: string): { lat: number; lng: number } | null {
@@ -333,6 +356,7 @@ function transformCentersToStatesStructure(centers: any[]): any[] {
       district: district,
       state: state,
       phone: center.contact_no,
+      campaign_details: center.campaign_details || undefined,
       latitude: latLng?.lat || 0,
       longitude: latLng?.lng || 0
     }
@@ -466,10 +490,12 @@ async function getCurrentLocation() {
       lng: position.coords.longitude
     }
 
-    // Save location granted status to localStorage
+    // Save location with timestamp to localStorage
     locationGranted.value = true
-    localStorage.setItem('locationGranted', 'true')
-    localStorage.setItem('userLocation', JSON.stringify(userLocation.value))
+    localStorage.setItem(LOCATION_GRANTED_KEY, 'true')
+    localStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(userLocation.value))
+    localStorage.setItem(LOCATION_TIMESTAMP_KEY, Date.now().toString())
+    console.log('📍 Location saved with timestamp')
   } catch (error) {
     errorMessage.value = 'Unable to get your location. Please check permissions.'
   } finally {
@@ -554,6 +580,17 @@ function selectState(state: any) {
 
 function selectDistrict(district: any) {
   selectedDistrict.value = district
+
+  // Scroll to the centres list after the DOM updates
+  nextTick(() => {
+    if (centresListContainer.value) {
+      centresListContainer.value.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      })
+      console.log('📍 Scrolled to centres list for district:', district.name)
+    }
+  })
 }
 
 function showDistricts() {
@@ -586,22 +623,46 @@ watch([viewMode, filteredCenters], async () => {
   }
 })
 
+// Watch for activeTab changes to auto-fetch location when Near Me tab is clicked
+watch(() => activeTab.value, async (newTab) => {
+  if (newTab === 'nearMe') {
+    // Clear location cache when Near Me tab is clicked to force fresh fetch
+    console.log('🔄 Near Me tab clicked, clearing location cache for fresh fetch...')
+    clearLocationCache()
+    userLocation.value = null
+    locationGranted.value = false
+
+    // Automatically get user's location
+    console.log('📍 Fetching fresh user location...')
+    await getUserLocation()
+  }
+})
+
 onMounted(() => {
   // Load center addresses from API
   loadCenterAddresses()
 
-  // Check if location was previously granted
-  const savedLocationGranted = localStorage.getItem('locationGranted')
-  const savedUserLocation = localStorage.getItem('userLocation')
+  // Check if location was previously granted and cache is not expired
+  const savedLocationGranted = localStorage.getItem(LOCATION_GRANTED_KEY)
+  const savedUserLocation = localStorage.getItem(LOCATION_CACHE_KEY)
 
   if (savedLocationGranted === 'true' && savedUserLocation) {
-    try {
-      const location = JSON.parse(savedUserLocation)
-      userLocation.value = location
-      locationGranted.value = true
-      console.log('Location restored from localStorage:', location)
-    } catch (error) {
-      console.error('Error parsing saved location:', error)
+    // Check if cache is expired
+    if (isLocationCacheExpired()) {
+      console.log('⏰ Location cache expired (5+ minutes old), clearing...')
+      clearLocationCache()
+    } else {
+      try {
+        const location = JSON.parse(savedUserLocation)
+        userLocation.value = location
+        locationGranted.value = true
+        const timestamp = localStorage.getItem(LOCATION_TIMESTAMP_KEY)
+        const ageMinutes = timestamp ? Math.round((Date.now() - parseInt(timestamp)) / 1000 / 60) : 'unknown'
+        console.log(`📍 Location restored from cache (${ageMinutes} minutes old):`, location)
+      } catch (error) {
+        console.error('Error parsing saved location:', error)
+        clearLocationCache()
+      }
     }
   }
 

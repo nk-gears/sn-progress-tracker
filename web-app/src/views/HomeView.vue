@@ -18,12 +18,11 @@
             <p>{{ $t('about.para1') }}</p>
             <p>{{ $t('about.para2') }}</p>
             <p>{{ $t('about.para3') }}</p>
-            <p class="font-bold text-purple-700 text-lg">{{ $t('about.para4') }}</p>
+            <!-- <p class="font-bold text-purple-700 text-lg">{{ $t('about.para4') }}</p> -->
           </div>
 
           <div class="mt-6 text-center">
             <a href="#find-centre" class="btn btn-primary">{{ $t('about.findCentreBtn') }}</a>
-            <a href="https://www.brahmakumaris.com" target="_blank" class="btn btn-secondary ml-4">{{ $t('about.knowMoreBtn') }}</a>
           </div>
         </div>
       </div>
@@ -36,7 +35,7 @@
         <div class="max-w-4xl mx-auto content-card">
           <div class="prose prose-lg max-w-none space-y-4">
             <p>{{ $t('organiser.para1') }}</p>
-            <p>{{ $t('organiser.para2') }}</p>
+            <!-- <p>{{ $t('organiser.para2') }}</p> -->
           </div>
         </div>
       </div>

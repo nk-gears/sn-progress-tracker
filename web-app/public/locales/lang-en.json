@@ -96,12 +96,20 @@
     "mobileLabel": "WhatsApp Number",
     "mobilePlaceholder": "10-digit number",
     "mobileHelp": "10-digit WhatsApp number only",
+    "numberOfPeopleLabel": "Number of People Joining",
+    "numberOfPeopleHelp": "Select how many people will be joining",
     "joinButton": "Join the Event",
     "joining": "Joining...",
     "success": "Thank You!",
     "successMessage": "You have been registered for the event. We look forward to seeing you!",
     "joinGroup": "Join Our WhatsApp Group",
     "close": "Close"
+  },
+  "updateNotification": {
+    "title": "✨ New version available!",
+    "message": "A new version of the app has been released. Please refresh to get the latest features and improvements.",
+    "refresh": "Refresh",
+    "later": "Later"
   },
   "footer": {
     "tagline": "Experience God Shiva through silence and meditation",

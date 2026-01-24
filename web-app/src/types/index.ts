@@ -9,6 +9,7 @@ export interface Centre {
   latitude: number
   longitude: number
   phone: string
+  campaign_details?: string
   distance?: number
 }
 

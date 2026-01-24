@@ -1803,6 +1803,7 @@ function handleEventRegister() {
     $name = trim($input['name']);
     $mobile = trim($input['mobile']);
     $center_code = trim($input['center_code']);
+    $numberOfPeople = isset($input['number_of_people']) ? (int)$input['number_of_people'] : 1;
 
     // Validate name (only letters and spaces)
     if (empty($name)) {
@@ -1830,6 +1831,12 @@ function handleEventRegister() {
         return;
     }
 
+    // Validate number of people (must be between 1 and 50)
+    if ($numberOfPeople < 1 || $numberOfPeople > 50) {
+        sendResponse(['success' => false, 'message' => 'Number of people must be between 1 and 50'], 400);
+        return;
+    }
+
     // Validate and get centre_id from center_code
     try {
         $centre = fetchRow(
@@ -1846,13 +1853,13 @@ function handleEventRegister() {
         $centre_id = $centre['id'];
 
         // Log the data being inserted for debugging
-        error_log('Event registration attempt: name=' . $name . ', mobile=' . $mobile . ', centre_id=' . $centre_id);
+        error_log('Event registration attempt: name=' . $name . ', mobile=' . $mobile . ', centre_id=' . $centre_id . ', number_of_people=' . $numberOfPeople);
 
         // Insert registration with centre_id from medt_center_addresses
         $result = executeInsert(
-            "INSERT INTO medt_event_register (name, mobile, centre_id) VALUES (?, ?, ?)",
-            [$name, $mobile, $centre_id],
-            'ssi'
+            "INSERT INTO medt_event_register (name, mobile, centre_id, number_of_people) VALUES (?, ?, ?, ?)",
+            [$name, $mobile, $centre_id, $numberOfPeople],
+            'ssii'
         );
 
         if ($result && $result['insert_id']) {
@@ -1883,7 +1890,7 @@ function handleCenterAddresses() {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         try {
             $centers = fetchAll(
-                "SELECT id, center_code, state, district, locality, address, contact_no, address_contact_verified, latitude_longitude, lat_long_verified, url, verified, last_modified FROM medt_center_addresses ORDER BY state, district, locality"
+                "SELECT id, center_code, state, district, locality, address, contact_no, address_contact_verified, latitude_longitude, lat_long_verified, url, verified, campaign_details, last_modified FROM medt_center_addresses ORDER BY state, district, locality"
             );
 
             sendResponse([
@@ -1947,7 +1954,7 @@ function handleCenterAddresses() {
                     // Define all updateable fields
                     $updateableFields = [
                         'state', 'district', 'locality', 'address', 'contact_no',
-                        'address_contact_verified', 'latitude_longitude', 'lat_long_verified', 'url', 'verified'
+                        'address_contact_verified', 'latitude_longitude', 'lat_long_verified', 'url', 'verified', 'campaign_details'
                     ];
 
                     foreach ($updateableFields as $field) {
@@ -1974,7 +1981,7 @@ function handleCenterAddresses() {
 
                     $insertableFields = [
                         'state', 'district', 'locality', 'address', 'contact_no',
-                        'address_contact_verified', 'latitude_longitude', 'lat_long_verified', 'url', 'verified'
+                        'address_contact_verified', 'latitude_longitude', 'lat_long_verified', 'url', 'verified', 'campaign_details'
                     ];
 
                     foreach ($insertableFields as $field) {

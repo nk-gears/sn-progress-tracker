@@ -137,6 +137,36 @@
                 <p v-else-if="form.mobile && !errors.mobile" class="text-green-600 text-xs mt-1">✓ Mobile number looks good</p>
               </div>
 
+              <!-- Number of People Joining -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('joinEvent.numberOfPeopleLabel') || 'Number of People Joining' }}</label>
+                <div class="flex items-center gap-3">
+                  <button
+                    type="button"
+                    @click="form.numberOfPeople = Math.max(1, form.numberOfPeople - 1)"
+                    class="px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded transition"
+                  >
+                    −
+                  </button>
+                  <input
+                    v-model.number="form.numberOfPeople"
+                    type="number"
+                    min="1"
+                    max="50"
+                    class="form-input flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent text-center"
+                    :disabled="isSubmitting"
+                  />
+                  <button
+                    type="button"
+                    @click="form.numberOfPeople = Math.min(50, form.numberOfPeople + 1)"
+                    class="px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded transition"
+                  >
+                    +
+                  </button>
+                </div>
+                <p class="text-xs text-gray-500 mt-1.5">{{ $t('joinEvent.numberOfPeopleHelp') || 'Select how many people will be joining' }}</p>
+              </div>
+
               <!-- Error Message -->
               <Transition name="fade">
                 <div v-if="error" class="p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -193,7 +223,8 @@ const emit = defineEmits<Emits>()
 
 const form = reactive({
   name: '',
-  mobile: ''
+  mobile: '',
+  numberOfPeople: 1
 })
 
 const errors = reactive({
@@ -210,6 +241,7 @@ const whatsappLink = ref<string>('')
 const resetForm = () => {
   form.name = ''
   form.mobile = ''
+  form.numberOfPeople = 1
   error.value = ''
   errors.name = ''
   errors.mobile = ''
@@ -302,7 +334,8 @@ const handleSubmit = async () => {
     const payload = {
       name: form.name.trim(),
       mobile: form.mobile.trim(),
-      center_code: props.centre.center_code
+      center_code: props.centre.center_code,
+      number_of_people: form.numberOfPeople
     }
 
     console.log('Submitting registration with payload:', payload)

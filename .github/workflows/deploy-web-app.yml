@@ -1,0 +1,252 @@
+name: Deploy Web App on Version Change
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'version.txt'
+      - 'web-app/**'
+      - '.github/workflows/deploy-web-app.yml'
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  WEB_APP_DIR: web-app
+  NODE_VERSION: '18'
+
+jobs:
+  detect-version:
+    name: Detect Version Change
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        run: |
+          if [ -f "version.txt" ]; then
+            VERSION=$(cat version.txt | xargs)
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "📦 Version: $VERSION"
+          else
+            echo "version=1.0.0" >> $GITHUB_OUTPUT
+            echo "⚠️ version.txt not found, using default 1.0.0"
+          fi
+
+  build:
+    name: Build Web App
+    runs-on: ubuntu-latest
+    needs: detect-version
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: '${{ env.WEB_APP_DIR }}/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: ${{ env.WEB_APP_DIR }}
+        run: npm ci
+
+      - name: Build for production
+        working-directory: ${{ env.WEB_APP_DIR }}
+        run: NODE_ENV=production npm run build
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://happy-village.org/sn-progress' }}
+
+      - name: Verify build output
+        working-directory: ${{ env.WEB_APP_DIR }}
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "❌ Build failed: dist directory not found"
+            exit 1
+          fi
+          echo "✅ Build successful"
+          echo "📊 Build artifacts:"
+          du -sh dist
+          find dist -maxdepth 1 -type f -o -type d | head -20
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-app-build-${{ needs.detect-version.outputs.version }}
+          path: ${{ env.WEB_APP_DIR }}/dist
+          retention-days: 30
+
+  deploy:
+    name: Deploy to FTP
+    runs-on: ubuntu-latest
+    needs: [detect-version, build]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: web-app-build-${{ needs.detect-version.outputs.version }}
+          path: dist-to-deploy
+
+      - name: Display artifact contents
+        run: |
+          echo "📦 Artifact contents:"
+          ls -la dist-to-deploy/
+          echo ""
+          echo "📊 Size:"
+          du -sh dist-to-deploy/
+
+      - name: Create version.json for cache busting
+        run: |
+          # Create version.json with current deployment info
+          cat > dist-to-deploy/version.json << 'EOF'
+          {
+            "version": "${{ needs.detect-version.outputs.version }}",
+            "timestamp": $(date +%s),
+            "deployed": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          }
+          EOF
+          echo "✅ version.json created"
+          cat dist-to-deploy/version.json
+
+      - name: Prepare deployment files
+        run: |
+          # Create .htaccess for Vue SPA routing with proper cache control
+          cat > dist-to-deploy/.htaccess << 'EOF'
+          # Enable mod_rewrite
+          RewriteEngine On
+
+          # Handle Vue.js SPA routing
+          # Redirect all requests to index.html unless they are actual files/directories
+          RewriteCond %{REQUEST_FILENAME} !-f
+          RewriteCond %{REQUEST_FILENAME} !-d
+          RewriteRule ^ index.html [L]
+
+          # Set cache headers - CRITICAL for version management
+          <IfModule mod_headers.c>
+              # HTML files: No cache (or very short cache)
+              <FilesMatch "\.html$">
+                  Header set Cache-Control "public, max-age=3600, must-revalidate"
+                  Header set Pragma "public"
+              </FilesMatch>
+
+              # version.json: Never cache (always fetch fresh)
+              <FilesMatch "^version\.json$">
+                  Header set Cache-Control "public, max-age=0, must-revalidate, no-cache, no-store"
+                  Header set Pragma "no-cache"
+              </FilesMatch>
+
+              # Dynamic content
+              <FilesMatch "^index\.html$">
+                  Header set Cache-Control "public, max-age=3600, must-revalidate"
+              </FilesMatch>
+
+              # Static hashed assets: Long cache (1 year) - safe because Vite includes hash in filename
+              <FilesMatch "assets/.*\.[0-9a-f]{8}\.(js|css|woff|woff2|ttf)$">
+                  Header set Cache-Control "public, max-age=31536000, immutable"
+              </FilesMatch>
+          </IfModule>
+
+          # Cache static assets with expires
+          <IfModule mod_expires.c>
+              ExpiresActive On
+
+              # HTML files: 1 hour
+              ExpiresByType text/html "access plus 1 hour"
+
+              # Images: 1 year (safe due to Vite hashing)
+              ExpiresByType image/jpg "access plus 1 year"
+              ExpiresByType image/jpeg "access plus 1 year"
+              ExpiresByType image/gif "access plus 1 year"
+              ExpiresByType image/png "access plus 1 year"
+              ExpiresByType image/svg+xml "access plus 1 year"
+              ExpiresByType image/x-icon "access plus 1 year"
+
+              # CSS/JS: 1 month (hashed filenames in production)
+              ExpiresByType text/css "access plus 1 month"
+              ExpiresByType application/javascript "access plus 1 month"
+              ExpiresByType application/json "access plus 1 month"
+              ExpiresByType text/x-javascript "access plus 1 month"
+
+              # Fonts: 1 year
+              ExpiresByType font/ttf "access plus 1 year"
+              ExpiresByType font/otf "access plus 1 year"
+              ExpiresByType application/x-font-woff "access plus 1 year"
+              ExpiresByType application/x-font-woff2 "access plus 1 year"
+          </IfModule>
+
+          # Compress output
+          <IfModule mod_deflate.c>
+              AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml application/javascript application/json image/svg+xml
+          </IfModule>
+          EOF
+          echo "✅ .htaccess file created with cache busting headers"
+
+      - name: Deploy via FTP (SyncFTP)
+        uses: SamKirkland/FTP-Deploy-Action@4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist-to-deploy/
+          server-dir: /public_html/sn-join/
+          dangerous-clean-slate: false
+          state-name: .ftp-deploy-sync-state.json
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            .env
+            .env.local
+            .env.*.local
+
+  notify:
+    name: Send Deployment Notification
+    runs-on: ubuntu-latest
+    needs: [detect-version, deploy]
+    if: always()
+    steps:
+      - name: Determine deployment status
+        id: status
+        run: |
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+            echo "message=Web App deployed successfully" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+            echo "message=Web App deployment failed" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Print deployment summary
+        run: |
+          echo "${{ steps.status.outputs.emoji }} Deployment Status: ${{ steps.status.outputs.message }}"
+          echo ""
+          echo "📋 Deployment Details:"
+          echo "  Version: ${{ needs.detect-version.outputs.version }}"
+          echo "  Commit: ${{ github.sha }}"
+          echo "  Branch: ${{ github.ref_name }}"
+          echo "  Repository: ${{ github.repository }}"
+          echo ""
+          echo "🔗 Deployment URL: https://happy-village.org/sn-join/"
