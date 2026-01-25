@@ -19,7 +19,7 @@
         @click="handleJoinNow"
         class="w-full btn btn-primary text-center"
       >
-        Join Now
+        Register
       </button>
 
       <!-- Contact Actions -->
