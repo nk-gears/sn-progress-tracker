@@ -9,6 +9,17 @@
 
     <p class="text-gray-600 mb-2 text-sm">{{ centre.address }}</p>
 
+    <div v-if="centre.contact_no" class="flex flex-wrap gap-2 mb-2">
+      <a
+        v-for="phone in parsePhoneNumbers(centre.contact_no)"
+        :key="phone"
+        :href="`tel:${phone}`"
+        class="text-purple-600 font-semibold text-sm hover:text-purple-700"
+      >
+        📞 {{ phone }}
+      </a>
+    </div>
+
     <p v-if="centre.campaign_details" class="text-sm text-gray-600 mb-3 whitespace-pre-line">
       {{ centre.campaign_details }}
     </p>
@@ -22,21 +33,16 @@
         Register
       </button>
 
-      <!-- Contact Actions -->
-      <div class="flex items-center justify-between gap-2">
-        <a :href="`tel:${centre.phone}`" class="text-purple-600 font-semibold text-sm hover:text-purple-700" @click.stop>
-          📞 {{ $t('centreCard.call') }}
-        </a>
-
-        <button
-          v-if="centre.latitude && centre.longitude"
-          @click.stop="openDirections"
-          title="Get Directions"
-          class="transition hover:opacity-80"
-        >
-          <img src="/images/google-map.png" alt="Get Directions" class="w-5 h-5">
-        </button>
-      </div>
+      <!-- Directions Button -->
+      <button
+        v-if="centre.latitude && centre.longitude"
+        @click.stop="openDirections"
+        title="Get Directions"
+        class="w-full flex items-center justify-center gap-2 px-4 py-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded transition"
+      >
+        <img src="/images/google-map.png" alt="Get Directions" class="w-5 h-5">
+        <span class="text-sm font-semibold">Get Directions</span>
+      </button>
     </div>
   </div>
 </template>
@@ -58,6 +64,13 @@ const formatDistance = (distance: number): string => {
     return `${Math.round(distance * 1000)} m`
   }
   return `${distance.toFixed(1)} km`
+}
+
+const parsePhoneNumbers = (phoneString: string): string[] => {
+  return phoneString
+    .split('/')
+    .map(phone => phone.trim())
+    .filter(phone => phone.length > 0)
 }
 
 const openDirections = () => {

@@ -356,6 +356,7 @@ function transformCentersToStatesStructure(centers: any[]): any[] {
       district: district,
       state: state,
       phone: center.contact_no,
+      contact_no: center.contact_no,
       campaign_details: center.campaign_details || undefined,
       latitude: latLng?.lat || 0,
       longitude: latLng?.lng || 0

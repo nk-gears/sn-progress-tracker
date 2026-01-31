@@ -89,6 +89,10 @@
       "answer": "Shivanum Naanum will be held from 14-16 February 2026. The centres will be open in two sessions: Morning session from 7:00 AM to 12:00 Noon, and Evening session from 4:00 PM to 8:00 PM. You can visit any centre during these hours."
     }
   },
+  "campaign": {
+    "findCentre": "🎯 Find Experience Centre Nearby",
+    "completeRegistration": "📝 Complete Registration"
+  },
   "joinEvent": {
     "title": "Join the Event",
     "nameLabel": "Name",

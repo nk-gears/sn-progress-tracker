@@ -207,6 +207,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { getApiUrl } from '@/config'
 import type { Centre } from '@/types'
+import { useCampaign } from '@/composables/useCampaign'
 
 interface Props {
   isOpen: boolean
@@ -330,12 +331,19 @@ const handleSubmit = async () => {
 
   try {
     const url = getApiUrl('eventRegister')
+    const { getCampaignSource } = useCampaign()
+    const campaignSource = getCampaignSource()
 
-    const payload = {
+    const payload: any = {
       name: form.name.trim(),
       mobile: form.mobile.trim(),
       center_code: props.centre.center_code,
       number_of_people: form.numberOfPeople
+    }
+
+    // Add campaign_source if it exists
+    if (campaignSource) {
+      payload.campaign_source = campaignSource
     }
 
     console.log('Submitting registration with payload:', payload)

@@ -12,7 +12,8 @@
       "Bash(curl:*)",
       "Bash(python3:*)",
       "Bash(chmod:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(grep:*)"
     ]
   }
 }

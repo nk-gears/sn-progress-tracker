@@ -1804,6 +1804,7 @@ function handleEventRegister() {
     $mobile = trim($input['mobile']);
     $center_code = trim($input['center_code']);
     $numberOfPeople = isset($input['number_of_people']) ? (int)$input['number_of_people'] : 1;
+    $campaignSource = isset($input['campaign_source']) ? trim($input['campaign_source']) : null;
 
     // Validate name (only letters and spaces)
     if (empty($name)) {
@@ -1853,14 +1854,22 @@ function handleEventRegister() {
         $centre_id = $centre['id'];
 
         // Log the data being inserted for debugging
-        error_log('Event registration attempt: name=' . $name . ', mobile=' . $mobile . ', centre_id=' . $centre_id . ', number_of_people=' . $numberOfPeople);
+        error_log('Event registration attempt: name=' . $name . ', mobile=' . $mobile . ', centre_id=' . $centre_id . ', number_of_people=' . $numberOfPeople . ', campaign_source=' . ($campaignSource ?? 'none'));
 
         // Insert registration with centre_id from medt_center_addresses
-        $result = executeInsert(
-            "INSERT INTO medt_event_register (name, mobile, centre_id, number_of_people) VALUES (?, ?, ?, ?)",
-            [$name, $mobile, $centre_id, $numberOfPeople],
-            'ssii'
-        );
+        if ($campaignSource) {
+            $result = executeInsert(
+                "INSERT INTO medt_event_register (name, mobile, centre_id, number_of_people, campaign_source) VALUES (?, ?, ?, ?, ?)",
+                [$name, $mobile, $centre_id, $numberOfPeople, $campaignSource],
+                'ssiss'
+            );
+        } else {
+            $result = executeInsert(
+                "INSERT INTO medt_event_register (name, mobile, centre_id, number_of_people) VALUES (?, ?, ?, ?)",
+                [$name, $mobile, $centre_id, $numberOfPeople],
+                'ssii'
+            );
+        }
 
         if ($result && $result['insert_id']) {
             error_log('Event registration successful: id=' . $result['insert_id'] . ', name=' . $name);
@@ -1889,8 +1898,9 @@ function handleEventRegister() {
 function handleCenterAddresses() {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         try {
+            // Filter only active centres (is_active = 'y')
             $centers = fetchAll(
-                "SELECT id, center_code, state, district, locality, address, contact_no, address_contact_verified, latitude_longitude, lat_long_verified, url, verified, campaign_details, last_modified FROM medt_center_addresses ORDER BY state, district, locality"
+                "SELECT id, center_code, state, district, locality, address, contact_no, address_contact_verified, latitude_longitude, lat_long_verified, url, verified, is_active, campaign_details, last_modified FROM medt_center_addresses WHERE is_active = 'y' ORDER BY state, district, locality"
             );
 
             sendResponse([
@@ -1954,7 +1964,7 @@ function handleCenterAddresses() {
                     // Define all updateable fields
                     $updateableFields = [
                         'state', 'district', 'locality', 'address', 'contact_no',
-                        'address_contact_verified', 'latitude_longitude', 'lat_long_verified', 'url', 'verified', 'campaign_details'
+                        'address_contact_verified', 'latitude_longitude', 'lat_long_verified', 'url', 'verified', 'is_active', 'campaign_details'
                     ];
 
                     foreach ($updateableFields as $field) {
@@ -1981,7 +1991,7 @@ function handleCenterAddresses() {
 
                     $insertableFields = [
                         'state', 'district', 'locality', 'address', 'contact_no',
-                        'address_contact_verified', 'latitude_longitude', 'lat_long_verified', 'url', 'verified', 'campaign_details'
+                        'address_contact_verified', 'latitude_longitude', 'lat_long_verified', 'url', 'verified', 'is_active', 'campaign_details'
                     ];
 
                     foreach ($insertableFields as $field) {

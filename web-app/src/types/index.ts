@@ -9,6 +9,7 @@ export interface Centre {
   latitude: number
   longitude: number
   phone: string
+  contact_no?: string
   campaign_details?: string
   distance?: number
 }
@@ -53,6 +54,15 @@ export interface UserLocation {
   latitude: number
   longitude: number
   address: string
+}
+
+// Campaign Registration Types
+export interface CampaignRegistration {
+  name: string
+  mobile: string
+  center_code: string
+  number_of_people: number
+  campaign_source: string
 }
 
 // API Response Types
