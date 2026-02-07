@@ -23,3 +23,32 @@ sec-fetch-mode: cors
 sec-fetch-site: same-origin
 user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
 
+
+
+
+### TES
+POST https://happy-village.org/sn-progress/api/import-individual-hours
+Content-Type: application/json
+
+[{"participant_name":"BK Chandra","participant_age":50,"participant_gender":"2025-08-28","session_date":"2025-08-28","start_time":"19:00:00","duration_minutes":30,"branch_id":182,"volunteer_id":171}]
+
+
+
+### CHECKS
+
+POST /sn-progress/api.php?event-register HTTP/1.1
+host: localhost:8080
+accept: */*
+accept-language: en-IN,en-GB;q=0.9,en-US;q=0.8,en;q=0.7,hi;q=0.6,bm;q=0.5,ta;q=0.4
+content-type: application/json
+sec-ch-ua: "Not:A-Brand";v="99", "Google Chrome";v="145", "Chromium";v="145"
+sec-ch-ua-mobile: ?0
+sec-ch-ua-platform: "macOS"
+sec-fetch-dest: empty
+sec-fetch-mode: cors
+sec-fetch-site: same-origin
+user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+cookie: _ga=GA1.1.1378049581.1769734495; _ga_JEXDBTXTMW=GS2.1.s1770432856$o6$g0$t1770432860$j56$l0$h0
+content-length: 83
+
+{"name":"Nirmal","mobile":"9283181229","number_of_people":1,"campaign_source":"fb"}

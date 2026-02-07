@@ -6,9 +6,10 @@ export interface Centre {
   address: string
   district: string
   state: string
-  latitude: number
-  longitude: number
-  phone: string
+  latitude?: number
+  longitude?: number
+  latitude_longitude?: string // Combined lat,lng from API (e.g., "12.34,56.78")
+  phone?: string
   contact_no?: string
   campaign_details?: string
   distance?: number

@@ -7,6 +7,7 @@ require_once 'config.php';
 $request_uri = $_SERVER['REQUEST_URI'];
 $parsed_url = parse_url($request_uri);
 $path = trim($parsed_url['path'], '/');
+//echo $path;
 
 // Remove any subdirectory prefix that contains 'api' in the path
 // This handles deployments in subdirectories like /sn-progress/api/
@@ -88,8 +89,16 @@ switch ($endpoint) {
         handleIndividualHours();
         break;
 
+    case 'import-individual-hours':
+        handleImportIndividualHours();
+        break;
+
     case 'event-register':
-        handleEventRegister();
+        if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
+            handleEventRegisterUpdate();
+        } else {
+            handleEventRegister();
+        }
         break;
 
     case 'center-addresses':
@@ -104,7 +113,7 @@ switch ($endpoint) {
         sendResponse([
             'success' => false,
             'error' => 'Invalid endpoint',
-            'message' => "Endpoint '$endpoint' not found. Available endpoints: auth, participants, sessions, dashboard, profile, onboard, bulk-users, admin-report, branches, event-register, center-addresses, whatsapp-link",
+            'message' => "Endpoint '$endpoint' not found. Available endpoints: auth, participants, sessions, dashboard, profile, onboard, bulk-users, admin-report, branches, event-register, center-addresses, whatsapp-link, import-individual-hours",
             'available_endpoints' => [
                 'POST /api/auth - User authentication',
                 'GET /api/participants - Get participants',
@@ -123,6 +132,7 @@ switch ($endpoint) {
                 'GET /api/branches - Get all branches (public)',
                 'POST /api/event-register - Register for event (public)',
                 'POST /api/center-addresses - Sync/import center addresses (upsert by center_code)',
+                'POST /api/import-individual-hours - Import individual hours data (upsert by participant_id, entry_date)',
                 'GET /api/whatsapp-link - Get active WhatsApp link (public)'
             ]
         ], 404);
@@ -1765,6 +1775,170 @@ function handleIndividualHours() {
     }
 }
 
+// Import Meditation Sessions handler - Public endpoint for bulk import with upsert
+function handleImportIndividualHours() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        sendResponse(['success' => false, 'message' => 'Only POST method allowed'], 405);
+        return;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    // Log the incoming payload for debugging
+    error_log('Import meditation sessions payload: ' . json_encode($input));
+
+    // Validate that input is an array of meditation session objects
+    if (!is_array($input) || empty($input)) {
+        sendResponse(['success' => false, 'message' => 'Input must be a non-empty array of meditation session objects'], 400);
+        return;
+    }
+
+    $results = [
+        'success' => true,
+        'processed' => 0,
+        'inserted' => 0,
+        'updated' => 0,
+        'errors' => []
+    ];
+
+    try {
+        // Process each meditation session record in the array
+        foreach ($input as $index => $record) {
+            try {
+                // Validate always-required fields
+                $alwaysRequired = ['session_date', 'start_time', 'duration_minutes', 'branch_id', 'volunteer_id'];
+                $missing = [];
+
+                foreach ($alwaysRequired as $field) {
+                    if (!isset($record[$field]) || $record[$field] === '' || $record[$field] === null) {
+                        $missing[] = $field;
+                    }
+                }
+
+                // Check that at least participant_id or participant_name is provided
+                $has_participant_id = isset($record['participant_id']) && $record['participant_id'] !== '' && $record['participant_id'] !== null;
+                $has_participant_name = isset($record['participant_name']) && $record['participant_name'] !== '' && $record['participant_name'] !== null;
+
+                if (!$has_participant_id && !$has_participant_name) {
+                    $missing[] = 'participant_id or participant_name';
+                }
+
+                if (!empty($missing)) {
+                    $results['errors'][] = "Record #$index: Missing required fields: " . implode(', ', $missing);
+                    continue;
+                }
+
+                $session_date = trim((string)$record['session_date']);
+                $start_time = trim((string)$record['start_time']);
+                $duration_minutes = (int)$record['duration_minutes'];
+                $branch_id = (int)$record['branch_id'];
+                $volunteer_id = (int)$record['volunteer_id'];
+
+                // Resolve participant_id: use provided ID or look up/create by name
+                $participant_id = null;
+                if ($has_participant_id) {
+                    $participant_id = (int)$record['participant_id'];
+                } else {
+                    // Look up participant by name and branch_id
+                    $participant_name = trim((string)$record['participant_name']);
+                    $existingParticipant = fetchRow(
+                        "SELECT id FROM medt_participants WHERE name = ? AND branch_id = ?",
+                        [$participant_name, $branch_id],
+                        'si'
+                    );
+
+                    if ($existingParticipant) {
+                        $participant_id = (int)$existingParticipant['id'];
+                    } else {
+                        // Create new participant
+                        $gender = isset($record['participant_gender']) ? trim((string)$record['participant_gender']) : null;
+                        $age = isset($record['participant_age']) ? (int)$record['participant_age'] : null;
+
+                        $participant_id = executeInsert(
+                            "INSERT INTO medt_participants (name, age, gender, branch_id) VALUES (?, ?, ?, ?)",
+                            [$participant_name, $age, $gender, $branch_id],
+                            'sisi'
+                        );
+                    }
+                }
+
+                // Validate session_date format (YYYY-MM-DD)
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $session_date)) {
+                    $results['errors'][] = "Record #$index: Invalid session_date format. Use YYYY-MM-DD";
+                    continue;
+                }
+
+                // Validate start_time format (HH:MM:SS)
+                if (!preg_match('/^\d{2}:\d{2}:\d{2}$/', $start_time)) {
+                    $results['errors'][] = "Record #$index: Invalid start_time format. Use HH:MM:SS";
+                    continue;
+                }
+
+                // Validate duration_minutes (30-960, multiple of 30)
+                if ($duration_minutes < 30 || $duration_minutes > 960) {
+                    $results['errors'][] = "Record #$index: Duration minutes must be between 30 and 960";
+                    continue;
+                }
+
+                if ($duration_minutes % 30 !== 0) {
+                    $results['errors'][] = "Record #$index: Duration minutes must be a multiple of 30";
+                    continue;
+                }
+
+                // Check if exact record already exists (by participant_id, session_date, and start_time)
+                $exactDuplicate = fetchRow(
+                    "SELECT id FROM medt_meditation_sessions WHERE participant_id = ? AND session_date = ? AND start_time = ?",
+                    [$participant_id, $session_date, $start_time],
+                    'iss'
+                );
+
+                if ($exactDuplicate) {
+                    // Exact duplicate found - skip to avoid duplicates
+                    error_log("Skipping duplicate record: participant=$participant_id, date=$session_date, time=$start_time");
+                    // Don't count as processed, don't add to errors - just skip silently
+                    continue;
+                }
+
+                // Check if there's an existing session for same participant and date (different time)
+                $existingRecord = fetchRow(
+                    "SELECT id FROM medt_meditation_sessions WHERE participant_id = ? AND session_date = ?",
+                    [$participant_id, $session_date],
+                    'is'
+                );
+
+                if ($existingRecord) {
+                    // Session exists but with different time - UPDATE it with new time and ADD duration
+                    executeQuery(
+                        "UPDATE medt_meditation_sessions SET duration_minutes = duration_minutes + ?, start_time = ?, branch_id = ?, volunteer_id = ? WHERE participant_id = ? AND session_date = ?",
+                        [$duration_minutes, $start_time, $branch_id, $volunteer_id, $participant_id, $session_date],
+                        'isiiis'
+                    );
+                    $results['updated']++;
+                } else {
+                    // Insert new record
+                    executeInsert(
+                        "INSERT INTO medt_meditation_sessions (participant_id, branch_id, volunteer_id, session_date, start_time, duration_minutes) VALUES (?, ?, ?, ?, ?, ?)",
+                        [$participant_id, $branch_id, $volunteer_id, $session_date, $start_time, $duration_minutes],
+                        'iiissi'
+                    );
+                    $results['inserted']++;
+                }
+
+                $results['processed']++;
+            } catch (Exception $e) {
+                $results['errors'][] = "Record #$index: " . $e->getMessage();
+                error_log('Meditation sessions import error at record ' . $index . ': ' . $e->getMessage());
+            }
+        }
+
+        $results['success'] = empty($results['errors']);
+        sendResponse($results);
+    } catch (Exception $e) {
+        error_log('Import meditation sessions error: ' . $e->getMessage());
+        sendResponse(['success' => false, 'message' => 'Failed to process import', 'error' => $e->getMessage()], 500);
+    }
+}
+
 // Public function to get all branches (for admin report)
 function getAllBranches() {
     try {
@@ -1787,14 +1961,15 @@ function handleEventRegister() {
     // Log the incoming payload for debugging
     error_log('Event register payload: ' . json_encode($input));
 
-    $missing = validateRequired($input, ['name', 'mobile', 'center_code']);
+    // Changed: center_code is now optional
+    $missing = validateRequired($input, ['name', 'mobile']);
 
     if (!empty($missing)) {
         error_log('Missing fields in event registration: ' . implode(', ', $missing));
         sendResponse([
             'success' => false,
             'message' => 'Missing required fields: ' . implode(', ', $missing) . '. Please ensure all fields are filled.',
-            'required_fields' => ['name', 'mobile', 'center_code'],
+            'required_fields' => ['name', 'mobile'],
             'received' => array_keys($input)
         ], 400);
         return;
@@ -1802,7 +1977,7 @@ function handleEventRegister() {
 
     $name = trim($input['name']);
     $mobile = trim($input['mobile']);
-    $center_code = trim($input['center_code']);
+    $center_code = isset($input['center_code']) ? trim($input['center_code']) : null;
     $numberOfPeople = isset($input['number_of_people']) ? (int)$input['number_of_people'] : 1;
     $campaignSource = isset($input['campaign_source']) ? trim($input['campaign_source']) : null;
 
@@ -1838,59 +2013,223 @@ function handleEventRegister() {
         return;
     }
 
-    // Validate and get centre_id from center_code
+    // Validate and get centre_id from center_code (if provided)
     try {
-        $centre = fetchRow(
-            "SELECT id, locality, center_code FROM medt_center_addresses WHERE center_code = ?",
-            [$center_code],
-            's'
-        );
+        $centre_id = null;
+        $centre_name = null;
 
-        if (!$centre) {
-            sendResponse(['success' => false, 'message' => 'Invalid centre selected'], 400);
-            return;
+        if ($center_code) {
+            $centre = fetchRow(
+                "SELECT id, locality, center_code FROM medt_center_addresses WHERE center_code = ?",
+                [$center_code],
+                's'
+            );
+
+            if (!$centre) {
+                sendResponse(['success' => false, 'message' => 'Invalid centre selected'], 400);
+                return;
+            }
+
+            $centre_id = $centre['id'];
+            $centre_name = $centre['locality'];
         }
-
-        $centre_id = $centre['id'];
 
         // Log the data being inserted for debugging
-        error_log('Event registration attempt: name=' . $name . ', mobile=' . $mobile . ', centre_id=' . $centre_id . ', number_of_people=' . $numberOfPeople . ', campaign_source=' . ($campaignSource ?? 'none'));
+        error_log('Event registration attempt: name=' . $name . ', mobile=' . $mobile . ', centre_id=' . ($centre_id ?? 'null') . ', number_of_people=' . $numberOfPeople . ', campaign_source=' . ($campaignSource ?? 'none'));
 
-        // Insert registration with centre_id from medt_center_addresses
-        if ($campaignSource) {
-            $result = executeInsert(
-                "INSERT INTO medt_event_register (name, mobile, centre_id, number_of_people, campaign_source) VALUES (?, ?, ?, ?, ?)",
-                [$name, $mobile, $centre_id, $numberOfPeople, $campaignSource],
-                'ssiss'
-            );
-        } else {
-            $result = executeInsert(
-                "INSERT INTO medt_event_register (name, mobile, centre_id, number_of_people) VALUES (?, ?, ?, ?)",
-                [$name, $mobile, $centre_id, $numberOfPeople],
-                'ssii'
-            );
-        }
+        // Use UPSERT to prevent duplicates based on mobile number
+        // If mobile already exists, update the record instead of inserting a new one
+        try {
+            global $mysqli;
 
-        if ($result && $result['insert_id']) {
-            error_log('Event registration successful: id=' . $result['insert_id'] . ', name=' . $name);
-            sendResponse([
-                'success' => true,
-                'message' => 'Registration successful! Thank you for registering.',
-                'data' => [
-                    'id' => $result['insert_id'],
-                    'name' => $name,
-                    'centre_code' => $center_code,
-                    'centre_name' => $centre['locality']
-                ]
-            ], 201);
-        } else {
-            error_log('Event registration failed: insert returned no ID');
+            if ($campaignSource) {
+                $stmt = $mysqli->prepare(
+                    "INSERT INTO medt_event_register (name, mobile, centre_id, number_of_people, campaign_source)
+                     VALUES (?, ?, ?, ?, ?)
+                     ON DUPLICATE KEY UPDATE
+                     name = VALUES(name),
+                     centre_id = COALESCE(VALUES(centre_id), centre_id),
+                     number_of_people = VALUES(number_of_people),
+                     campaign_source = COALESCE(VALUES(campaign_source), campaign_source),
+                     updated_at = NOW()"
+                );
+                $stmt->bind_param('ssiis', $name, $mobile, $centre_id, $numberOfPeople, $campaignSource);
+            } else {
+                $stmt = $mysqli->prepare(
+                    "INSERT INTO medt_event_register (name, mobile, centre_id, number_of_people)
+                     VALUES (?, ?, ?, ?)
+                     ON DUPLICATE KEY UPDATE
+                     name = VALUES(name),
+                     centre_id = COALESCE(VALUES(centre_id), centre_id),
+                     number_of_people = VALUES(number_of_people),
+                     updated_at = NOW()"
+                );
+                $stmt->bind_param('ssis', $name, $mobile, $centre_id, $numberOfPeople);
+            }
+
+            if (!$stmt->execute()) {
+                throw new Exception('Execute failed: ' . $stmt->error);
+            }
+
+            // Get the registration ID (either newly inserted or existing)
+            $registration_id = $mysqli->insert_id;
+            if (!$registration_id) {
+                // If insert_id is 0, it means we updated an existing record
+                // Fetch the ID of the updated record
+                $result = fetchRow(
+                    "SELECT id FROM medt_event_register WHERE mobile = ?",
+                    [$mobile],
+                    's'
+                );
+                $registration_id = $result['id'] ?? null;
+            }
+
+            $stmt->close();
+
+            if ($registration_id) {
+                error_log('Event registration successful: id=' . $registration_id . ', name=' . $name . ', action=' . ($mysqli->affected_rows === 1 ? 'insert' : 'update'));
+
+                $response_data = [
+                    'success' => true,
+                    'message' => 'Registration successful!',
+                    'data' => [
+                        'id' => $registration_id,
+                        'name' => $name,
+                        'mobile' => $mobile,
+                        'number_of_people' => $numberOfPeople
+                    ]
+                ];
+
+                // Add centre info if provided
+                if ($center_code && $centre_name) {
+                    $response_data['data']['centre_code'] = $center_code;
+                    $response_data['data']['centre_name'] = $centre_name;
+                }
+
+                sendResponse($response_data, 201);
+            } else {
+                error_log('Event registration failed: could not get registration ID');
+                sendResponse(['success' => false, 'message' => 'Failed to register. Please try again.'], 500);
+            }
+
+        } catch (Exception $e) {
+            error_log('Event registration UPSERT error: ' . $e->getMessage());
             sendResponse(['success' => false, 'message' => 'Failed to register. Please try again.'], 500);
         }
 
     } catch (Exception $e) {
         error_log('Event registration error: ' . $e->getMessage());
         sendResponse(['success' => false, 'message' => 'Failed to register. Please try again.'], 500);
+    }
+}
+
+// Event Registration Update handler (for step 2 - adding centre to existing registration)
+function handleEventRegisterUpdate() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'PATCH') {
+        sendResponse(['success' => false, 'message' => 'Only PATCH method allowed'], 405);
+        return;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    // Validate required fields - either registration_id or mobile is needed
+    $centerCode = isset($input['center_code']) ? trim($input['center_code']) : null;
+    if (!$centerCode) {
+        sendResponse([
+            'success' => false,
+            'message' => 'Missing required field: center_code',
+            'required_fields' => ['center_code']
+        ], 400);
+        return;
+    }
+
+    $registrationId = isset($input['registration_id']) ? (int)$input['registration_id'] : null;
+    $mobile = isset($input['mobile']) ? trim($input['mobile']) : null;
+
+    try {
+        // 1. Verify registration exists - use registration_id or mobile to find it
+        $registration = null;
+
+        if ($registrationId) {
+            $registration = fetchRow(
+                "SELECT id, name, mobile FROM medt_event_register WHERE id = ?",
+                [$registrationId],
+                'i'
+            );
+        } elseif ($mobile) {
+            $registration = fetchRow(
+                "SELECT id, name, mobile FROM medt_event_register WHERE mobile = ? ORDER BY updated_at DESC LIMIT 1",
+                [$mobile],
+                's'
+            );
+        }
+
+        if (!$registration) {
+            sendResponse([
+                'success' => false,
+                'message' => 'Registration not found'
+            ], 404);
+            return;
+        }
+
+        $registrationId = $registration['id'];
+
+        // 2. Validate and get centre_id from center_code
+        $centre = fetchRow(
+            "SELECT id, locality, center_code FROM medt_center_addresses WHERE center_code = ?",
+            [$centerCode],
+            's'
+        );
+
+        if (!$centre) {
+            sendResponse([
+                'success' => false,
+                'message' => 'Invalid centre selected'
+            ], 400);
+            return;
+        }
+
+        $centreId = $centre['id'];
+
+        // 3. Update registration with centre_id
+        global $mysqli;
+        $stmt = $mysqli->prepare(
+            "UPDATE medt_event_register SET centre_id = ?, updated_at = NOW() WHERE id = ?"
+        );
+        $stmt->bind_param('ii', $centreId, $registrationId);
+
+        if (!$stmt->execute()) {
+            throw new Exception('Failed to update registration: ' . $stmt->error);
+        }
+
+        $affectedRows = $mysqli->affected_rows;
+        $stmt->close();
+
+        if ($affectedRows > 0) {
+            error_log("Registration updated: id={$registrationId}, centre_id={$centreId}");
+            sendResponse([
+                'success' => true,
+                'message' => 'Thank you for registering!',
+                'data' => [
+                    'id' => $registrationId,
+                    'centre_id' => $centreId,
+                    'centre_code' => $centerCode,
+                    'centre_name' => $centre['locality']
+                ]
+            ], 200);
+        } else {
+            sendResponse([
+                'success' => false,
+                'message' => 'No changes made to registration'
+            ], 400);
+        }
+
+    } catch (Exception $e) {
+        error_log('Event registration update error: ' . $e->getMessage());
+        sendResponse([
+            'success' => false,
+            'message' => 'Failed to update registration'
+        ], 500);
     }
 }
 
