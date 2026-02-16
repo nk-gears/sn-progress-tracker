@@ -109,6 +109,10 @@ switch ($endpoint) {
         handleWhatsAppLink();
         break;
 
+    case 'event-reports':
+        handleEventReports();
+        break;
+
     default:
         sendResponse([
             'success' => false,
@@ -161,7 +165,7 @@ function handleAuth() {
             [$mobile],
             's'
         );
-
+        //Local Comment
         if (!$user) {
             sendResponse(['success' => false, 'message' => 'Invalid credentials'], 401);
         }
@@ -2407,6 +2411,110 @@ function handleWhatsAppLink() {
     } catch (Exception $e) {
         error_log('WhatsApp link error: ' . $e->getMessage());
         sendResponse(['success' => false, 'message' => 'Failed to fetch WhatsApp link'], 500);
+    }
+}
+
+// Event Reports handler - Proxy to Google Apps Script
+function handleEventReports() {
+    $method = $_SERVER['REQUEST_METHOD'];
+
+    // Ensure CORS headers are sent
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+    // Get AppScript URL from environment or configuration
+    $appScriptUrl = 'https://script.google.com/macros/s/AKfycbxhTxu15ZEC4opCVako9-IDOTtqrtDp8sbe2zjhV4JDqWDt6XFRDmeW0A5Myd9eS_s/exec';
+    if (!$appScriptUrl) {
+        sendResponse(['success' => false, 'message' => 'AppScript URL not configured'], 500);
+        return;
+    }
+
+    try {
+        if ($method === 'GET') {
+            // Fetch events by branch
+            $branch = $_GET['branch'] ?? null;
+            if (!$branch) {
+                sendResponse(['success' => false, 'message' => 'Branch parameter required'], 400);
+                return;
+            }
+
+            $url = $appScriptUrl . '?branch=' . urlencode($branch);
+            $response = fetchFromAppScript($url, 'GET');
+            sendResponse($response);
+
+        } elseif ($method === 'POST') {
+            // Submit event report
+            $input = json_decode(file_get_contents('php://input'), true);
+
+            if (empty($input)) {
+                sendResponse(['success' => false, 'message' => 'Invalid request body'], 400);
+                return;
+            }
+
+            $response = fetchFromAppScript($appScriptUrl, 'POST', $input);
+            sendResponse($response);
+
+        } else {
+            sendResponse(['success' => false, 'message' => 'Method not allowed'], 405);
+        }
+
+    } catch (Exception $e) {
+        error_log('Event reports error: ' . $e->getMessage());
+        sendResponse(['success' => false, 'message' => 'Failed to process event report'], 500);
+    }
+}
+
+// Helper function to fetch from AppScript
+function fetchFromAppScript($url, $method = 'GET', $data = null) {
+    error_log('AppScript Request URL: ' . $url);
+    error_log('AppScript Request Method: ' . $method);
+
+    $options = [
+        'http' => [
+            'method' => $method,
+            'header' => 'Content-Type: application/json',
+            'timeout' => 30
+        ]
+    ];
+
+    if ($method === 'POST' && $data) {
+        $jsonData = json_encode($data);
+        error_log('AppScript POST data: ' . substr($jsonData, 0, 500));
+        $options['http']['content'] = $jsonData;
+    }
+
+    $context = stream_context_create($options);
+
+    try {
+        $response = file_get_contents($url, false, $context);
+
+        error_log('AppScript Response: ' . substr($response, 0, 500));
+
+        if (empty($response)) {
+            error_log('AppScript returned empty response');
+            return [
+                'success' => false,
+                'message' => 'AppScript returned empty response'
+            ];
+        }
+
+        $decoded = json_decode($response, true);
+        if ($decoded === null) {
+            error_log('AppScript response is not valid JSON: ' . $response);
+            return [
+                'success' => false,
+                'message' => 'AppScript returned invalid JSON: ' . substr($response, 0, 100)
+            ];
+        }
+
+        return $decoded;
+    } catch (Exception $e) {
+        error_log('AppScript fetch error: ' . $e->getMessage());
+        return [
+            'success' => false,
+            'message' => 'Failed to connect to AppScript: ' . $e->getMessage()
+        ];
     }
 }
 ?>
