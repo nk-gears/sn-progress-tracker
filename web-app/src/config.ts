@@ -13,13 +13,29 @@ export const config = {
     // Endpoints
     endpoints: {
       eventRegister: '/api/event-register',
-      centerAddresses: '/api/center-addresses'
+      centerAddresses: '/api/center-addresses',
+      eventReportSubmit: import.meta.env.VITE_APPSCRIPT_URL || 'https://script.google.com/macros/d/{SCRIPT_ID}/usercopy',
+      eventReportsList: import.meta.env.VITE_APPSCRIPT_URL || 'https://script.google.com/macros/d/{SCRIPT_ID}/usercopy'
     }
   },
 
   // Google Maps Configuration
   maps: {
     apiKey: 'AIzaSyB80mIsZ2S4llsDA3rzssAqjvDGvZgFLv8'
+  },
+
+  // File Upload Configuration
+  fileUpload: {
+    photos: {
+      maxFiles: 5,
+      maxSizeMB: 2,
+      acceptedTypes: ['image/jpeg', 'image/png', 'image/jpg']
+    },
+    video: {
+      maxFiles: 1,
+      maxSizeMB: 50,
+      acceptedTypes: ['video/mp4', 'video/quicktime']
+    }
   },
 
   // App Configuration

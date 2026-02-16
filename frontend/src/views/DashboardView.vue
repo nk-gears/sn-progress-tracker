@@ -1,6 +1,7 @@
 <template>
-  <BaseLayout>
-    <div class="p-4 space-y-4">
+  <div>
+    <BaseLayout>
+      <div class="p-4 space-y-4">
       <!-- Dashboard Header -->
       <div class="card p-4">
         <h2 class="text-xl font-bold text-primary text-center">My Centre - All-Time Statistics</h2>
@@ -40,10 +41,38 @@
         </div>
       </div>
 
+      <!-- Event Report Section -->
+      <div class="card p-4">
+        <h3 class="text-lg font-bold text-primary mb-4">Event Reports</h3>
+        <p class="text-sm text-gray-600 mb-4">Manage and view branch event submissions</p>
+
+        <div class="grid grid-cols-2 gap-3">
+          <button
+            @click="openEventReportModal"
+            class="btn-primary flex items-center justify-center space-x-2"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            <span>Submit Report</span>
+          </button>
+
+          <button
+            @click="openEventReportsModal"
+            class="btn-primary flex items-center justify-center space-x-2"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <span>View Reports</span>
+          </button>
+        </div>
+      </div>
+
       <!-- Export Button -->
       <div v-if="!isLoading && dashboardData?.summary?.total_sessions" class="card p-4">
-        <button 
-          @click="exportSessionDetails" 
+        <button
+          @click="exportSessionDetails"
           :disabled="isExporting"
           class="w-full btn-primary flex items-center justify-center space-x-2"
         >
@@ -86,13 +115,30 @@
         </div>
       </div>
     </div>
-  </BaseLayout>
+    </BaseLayout>
+
+    <!-- Event Report Modal -->
+    <EventReportModal
+      :is-open="showEventReportModal"
+      @close="closeEventReportModal"
+      @success="handleEventReportSuccess"
+    />
+
+    <!-- Event Reports List Modal -->
+    <EventReportsModal
+      :is-open="showEventReportsModal"
+      @close="closeEventReportsModal"
+      @addReport="handleAddReportFromList"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, watch, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseLayout from '@/components/BaseLayout.vue'
+import EventReportModal from '@/components/EventReportModal.vue'
+import EventReportsModal from '@/components/EventReportsModal.vue'
 import { useSessionsStore } from '@/stores/sessions'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
@@ -104,8 +150,10 @@ const sessionsStore = useSessionsStore()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 
-// Export state
+// Export and Event Report state
 const isExporting = ref(false)
+const showEventReportModal = ref(false)
+const showEventReportsModal = ref(false)
 
 // Computed properties
 const dashboardData = computed(() => sessionsStore.dashboardData)
@@ -125,6 +173,32 @@ const getAmPm = (time: string): string => {
 }
 
 // Methods
+const openEventReportModal = () => {
+  showEventReportModal.value = true
+}
+
+const closeEventReportModal = () => {
+  showEventReportModal.value = false
+}
+
+const handleEventReportSuccess = () => {
+  showEventReportModal.value = false
+  appStore.showSuccess('Event report submitted successfully!')
+}
+
+const openEventReportsModal = () => {
+  showEventReportsModal.value = true
+}
+
+const closeEventReportsModal = () => {
+  showEventReportsModal.value = false
+}
+
+const handleAddReportFromList = () => {
+  closeEventReportsModal()
+  showEventReportModal.value = true
+}
+
 const editSession = (session: Session) => {
   sessionsStore.startEdit(session)
   appStore.showInfo('Editing session - modify details and submit to update')
@@ -155,16 +229,19 @@ const deleteSession = async (sessionId: number) => {
 
 const loadData = async () => {
   try {
+    console.log('Loading dashboard data...')
     sessionsStore.isLoading = true
-    
+
     // Load dashboard data and today's sessions concurrently
-    await Promise.all([
+    const results = await Promise.all([
       sessionsStore.loadDashboardData(),
       sessionsStore.loadTodaySessions()
     ])
+    console.log('Dashboard data loaded successfully:', results)
   } catch (error) {
     console.error('Dashboard data loading error:', error)
     appStore.showError('Failed to load dashboard data')
+    // Still show content even if data fails to load
   } finally {
     sessionsStore.isLoading = false
   }
@@ -255,6 +332,7 @@ const exportSessionDetails = async () => {
 
 // Lifecycle
 onMounted(() => {
+  console.log('DashboardView mounted, loading data...')
   loadData()
 })
 

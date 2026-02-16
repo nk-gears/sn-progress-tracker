@@ -17,6 +17,9 @@
             <li v-for="item in navItems" :key="item.href">
               <a :href="item.href" class="nav-link">{{ $t(item.label) }}</a>
             </li>
+            <li v-if="hasBranch">
+              <button @click="navigateToDashboard" class="nav-link">Dashboard</button>
+            </li>
           </ul>
           <LanguageSwitcher />
           <!-- WhatsApp Button -->
@@ -46,6 +49,11 @@
                 {{ $t(item.label) }}
               </a>
             </li>
+            <li v-if="hasBranch">
+              <button @click="navigateToDashboard" class="block w-full text-left py-2 nav-link">
+                Dashboard
+              </button>
+            </li>
           </ul>
           <div class="pt-4 border-t border-white/20 space-y-3">
             <LanguageSwitcher />
@@ -64,8 +72,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useBranchStore } from '@/stores/branchStore'
 import LanguageSwitcher from './LanguageSwitcher.vue'
+
+const router = useRouter()
+const branchStore = useBranchStore()
 
 const isOpen = ref(false)
 
@@ -79,12 +92,19 @@ const navItems = [
   { href: '#faq', label: 'nav.faq' }
 ]
 
+const hasBranch = computed(() => branchStore.hasBranch())
+
 const toggleMenu = () => {
   isOpen.value = !isOpen.value
 }
 
 const closeMenu = () => {
   isOpen.value = false
+}
+
+const navigateToDashboard = () => {
+  router.push('/dashboard')
+  closeMenu()
 }
 </script>
 

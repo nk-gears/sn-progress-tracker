@@ -73,3 +73,28 @@ export interface ApiResponse<T = any> {
   message?: string
   error?: string
 }
+
+// Event Report Types
+export interface EventReport {
+  branch: string
+  title: string
+  description: string
+  event_date: string
+  event_time: string
+  participants: string
+  folder_url: string
+  photo_urls: string
+  video_url: string
+  submitted_at: Date
+}
+
+export interface EventReportForm {
+  branch: string
+  eventTitle: string
+  eventDescription: string
+  eventDate: string
+  eventTime: string
+  participants: string
+  photos: File[]
+  video: File | null
+}

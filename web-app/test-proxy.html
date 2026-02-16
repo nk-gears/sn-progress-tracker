@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Drive Proxy</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            font-size: 14px;
+        }
+        input {
+            width: 400px;
+        }
+        img {
+            max-width: 100%;
+            margin-top: 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Google Drive Proxy Test</h1>
+
+    <div class="test-section">
+        <h2>Test 1: Direct Proxy Test</h2>
+        <p>Enter a Google Drive file ID from your event photos:</p>
+        <input type="text" id="fileId" placeholder="e.g., 1jhbiHNWdrb2gP8yi2EYDWvVHEkOXRwUk" value="1jhbiHNWdrb2gP8yi2EYDWvVHEkOXRwUk">
+        <button onclick="testProxy()">Test Proxy</button>
+        <div id="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: API Key Check</h2>
+        <button onclick="checkApiKey()">Check API Configuration</button>
+        <div id="apiResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Sample File IDs from Events</h2>
+        <p>These are file IDs from your Ambattur event:</p>
+        <ul>
+            <li><button onclick="testFileId('1jhbiHNWdrb2gP8yi2EYDWvVHEkOXRwUk')">Photo 1</button></li>
+            <li><button onclick="testFileId('1_eCjvwM_isHyEzEFtJQiXy_BnI4oh0No')">Photo 2</button></li>
+            <li><button onclick="testFileId('1myJevoxNq-LxjLEu7ZQ9bXubKNojAEyY')">Photo 3</button></li>
+        </ul>
+        <div id="sampleResult"></div>
+    </div>
+
+    <script>
+        const PROXY_URL = 'drive-image-proxy.php';
+
+        async function testProxy() {
+            const fileId = document.getElementById('fileId').value.trim();
+            const resultDiv = document.getElementById('result');
+
+            if (!fileId) {
+                resultDiv.innerHTML = '<div class="error">Please enter a file ID</div>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<p>Testing...</p>';
+
+            const proxyUrl = `${PROXY_URL}?id=${fileId}`;
+            console.log('Testing URL:', proxyUrl);
+
+            try {
+                const response = await fetch(proxyUrl);
+                console.log('Response status:', response.status);
+                console.log('Response headers:', [...response.headers.entries()]);
+
+                if (response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    console.log('Content-Type:', contentType);
+
+                    if (contentType && contentType.startsWith('image/')) {
+                        resultDiv.innerHTML = `
+                            <div class="success">✅ Success! Image loaded</div>
+                            <p><strong>URL:</strong> <code>${proxyUrl}</code></p>
+                            <img src="${proxyUrl}" alt="Test image">
+                        `;
+                    } else {
+                        const text = await response.text();
+                        console.log('Response text:', text);
+                        resultDiv.innerHTML = `
+                            <div class="error">❌ Unexpected content type: ${contentType}</div>
+                            <pre>${text}</pre>
+                        `;
+                    }
+                } else {
+                    const text = await response.text();
+                    console.error('Error response:', text);
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            ❌ HTTP ${response.status}: ${response.statusText}
+                        </div>
+                        <pre>${text}</pre>
+                    `;
+                }
+            } catch (error) {
+                console.error('Fetch error:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        ❌ Fetch Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function checkApiKey() {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.innerHTML = '<p>Checking API configuration...</p>';
+
+            // Try to fetch with an invalid file ID to check API response
+            const testUrl = `${PROXY_URL}?id=INVALID_TEST_ID`;
+
+            try {
+                const response = await fetch(testUrl);
+                const text = await response.text();
+                console.log('API check response:', text);
+
+                if (text.includes('API key')) {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            ❌ API Key Issue Detected
+                        </div>
+                        <pre>${text}</pre>
+                        <p><strong>Solution:</strong> Check that your API key is correct in drive-image-proxy.php</p>
+                    `;
+                } else if (text.includes('File not found') || response.status === 404) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ API Key appears to be working!
+                            <br>(Got expected 404 for invalid file ID)
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div>Response:</div>
+                        <pre>${text}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        ❌ Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function testFileId(fileId) {
+            document.getElementById('fileId').value = fileId;
+            testProxy();
+        }
+
+        // Auto-run API check on load
+        window.addEventListener('load', () => {
+            console.log('Proxy URL:', PROXY_URL);
+        });
+    </script>
+</body>
+</html>

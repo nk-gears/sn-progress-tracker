@@ -235,7 +235,32 @@ export interface InputProps extends BaseComponentProps {
   readonly?: boolean
 }
 
-// Event Types
+// Event Report Types
+export interface EventReportForm {
+  branch: string
+  eventTitle: string
+  eventDescription: string
+  eventDate: string
+  eventTime: string
+  participants: string
+  photos: File[]
+  video: File | null
+}
+
+export interface EventReport {
+  branch: string
+  title: string
+  description: string
+  event_date: string
+  event_time: string
+  participants: string
+  folder_url: string
+  photo_urls: string
+  video_url: string
+  submitted_at: Date
+}
+
+// Touch and Selection Event Types
 export interface TouchEventData {
   slot: string
   element: HTMLElement
